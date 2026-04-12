@@ -1,5 +1,5 @@
 ---
-description: "Check the current status of the autopilot pipeline — which phases are complete and what artifacts exist."
+description: "Check the current status of the autopilot pipeline using the state file and artifact scan."
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -7,94 +7,159 @@ scripts:
 
 # Autopilot Pipeline Status
 
-Check the current status of an autopilot pipeline run for the active feature.
+Reports the current status of the autopilot pipeline. Uses the state file for precise phase tracking and falls back to artifact scanning if no state file exists.
 
 ## Steps
 
-1. Run `{SCRIPT}` from repo root to get project paths. Parse JSON payload:
-   - `FEATURE_DIR`
-   - `FEATURE_SPEC`
-   - If JSON parsing fails, check `.specify/feature.json` for the feature directory path.
+### 1. Locate Feature Directory
 
-2. **Detect Feature Directory**: If no feature directory is found:
-   ```
-   No active feature found. Run /speckit.autopilot.run with a feature description to start the pipeline.
-   ```
-   Stop here.
+Run `{SCRIPT}` from repo root. Parse JSON payload for `FEATURE_DIR`.
 
-3. **Scan for Artifacts**: Check the feature directory for these files:
+If the script fails, check `.specify/feature.json` for the feature directory path.
 
-   | Artifact | File Path | Phase |
-   |----------|-----------|-------|
-   | Specification | `spec.md` | Phase 1: Specify |
-   | Quality Checklist | `checklists/requirements.md` | Phase 1: Specify |
-   | Clarifications | `spec.md` (## Clarifications section) | Phase 2: Clarify |
-   | Research | `research.md` | Phase 3: Plan |
-   | Implementation Plan | `plan.md` | Phase 3: Plan |
-   | Data Model | `data-model.md` | Phase 3: Plan |
-   | Contracts | `contracts/` directory | Phase 3: Plan |
-   | Quickstart | `quickstart.md` | Phase 3: Plan |
-   | Tasks | `tasks.md` | Phase 4: Tasks |
+If no feature is found:
 
-4. **Read Task Details** (if `tasks.md` exists):
-   - Count total tasks: lines matching `- [ ]` or `- [x]` or `- [X]`
-   - Count completed tasks: lines matching `- [x]` or `- [X]`
-   - Count remaining tasks: lines matching `- [ ]`
-   - Count unit test tasks: tasks containing "unit test" (case-insensitive)
-   - Count integration test tasks: tasks containing "integration test" (case-insensitive)
+```
+No active feature found.
 
-5. **Determine Pipeline Phase**:
+To start a new pipeline:
+  /speckit.autopilot.run <feature description>
+```
 
-   | Condition | Current Phase |
-   |-----------|---------------|
-   | No `spec.md` | Not Started |
-   | `spec.md` exists, no Clarifications section | Phase 1 Complete (ready for clarify) |
-   | Clarifications section exists, no `plan.md` | Phase 2 Complete (ready for plan) |
-   | `plan.md` exists, no `tasks.md` | Phase 3 Complete (ready for tasks) |
-   | `tasks.md` exists, incomplete tasks | Phase 4 Complete (ready for implement) |
-   | `tasks.md` exists, all tasks complete | Pipeline Complete |
+Stop here.
 
-6. **Output Status Report**:
+### 2. Load Pipeline State
 
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SPEC KIT AUTOPILOT — PIPELINE STATUS
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Read `FEATURE_DIR/autopilot-state.json` if it exists.
 
-   Feature: {feature-name}
-   Directory: {feature-directory}
+**If state file exists**: Use it as the primary source of truth for phase status. Continue to Step 3.
 
-   Phase 1 — Specify:      {✓ COMPLETE / — NOT STARTED}
-     spec.md:              {exists / missing}
-     checklist:            {exists / missing}
+**If no state file exists**: Fall back to artifact detection (Step 2b).
 
-   Phase 2 — Clarify:      {✓ COMPLETE / — NOT STARTED}
-     clarifications:       {N questions answered / none}
+#### 2b. Artifact Detection (Fallback)
 
-   Phase 3 — Plan:         {✓ COMPLETE / — NOT STARTED}
-     plan.md:              {exists / missing}
-     research.md:          {exists / missing / not needed}
-     data-model.md:        {exists / missing / not needed}
-     contracts/:           {exists / missing / not needed}
+Scan the feature directory for artifacts and infer phase status:
 
-   Phase 4 — Tasks:        {✓ COMPLETE / — NOT STARTED}
-     tasks.md:             {exists / missing}
-     total tasks:          {N}
-     completed:            {N}
-     remaining:            {N}
+| Condition | Inferred Status |
+|-----------|-----------------|
+| No `spec.md` | Pipeline not started |
+| `spec.md` exists, no `## Clarifications` with "Autopilot Session" | Specify done |
+| `spec.md` has "Autopilot Session" clarifications | Specify + Clarify done |
+| `plan.md` exists | Specify + Clarify + Plan done |
+| `tasks.md` exists | All phases done |
 
-   Test Enforcement:
-     unit test tasks:      {N}
-     integration test tasks: {N}
+### 3. Scan Artifacts
 
-   Current State: {phase description}
-   Next Step: {suggested command}
+Regardless of state file presence, scan the feature directory for these artifacts:
 
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ```
+| Artifact | Path | Phase |
+|----------|------|-------|
+| Specification | `spec.md` | Specify |
+| Quality Checklist | `checklists/requirements.md` | Specify |
+| Clarifications | `spec.md` → `## Clarifications` section | Clarify |
+| Research | `research.md` | Plan |
+| Implementation Plan | `plan.md` | Plan |
+| Data Model | `data-model.md` | Plan |
+| Contracts | `contracts/` | Plan |
+| Quickstart | `quickstart.md` | Plan |
+| Tasks | `tasks.md` | Tasks |
+| Validation State | `autopilot-state.json` | Validate |
 
-7. **Suggestions**: Based on current state, recommend:
-   - If not started: `/speckit.autopilot.run <feature description>`
-   - If partially complete: `/speckit.autopilot.run` (will resume from current phase)
-   - If tasks exist with remaining work: `/speckit.implement`
-   - If all tasks complete: `/speckit.analyze`
+### 4. Parse Task Details (if tasks.md exists)
+
+Count and classify tasks:
+
+- **Total tasks**: All lines matching `- [ ] T{NNN}` or `- [x] T{NNN}` or `- [X] T{NNN}`
+- **Completed**: Lines matching `- [x] T{NNN}` or `- [X] T{NNN}`
+- **Remaining**: Lines matching `- [ ] T{NNN}`
+- **Unit test tasks**: Tasks containing "unit test" (case-insensitive)
+- **Integration test tasks**: Tasks containing "integration test" (case-insensitive)
+- **Implementation tasks**: Tasks containing "Implement", "Create", "Build" but not "test"
+- **User stories**: Unique `[US{N}]` labels found
+
+### 5. Compute Pipeline Progress
+
+Calculate overall progress:
+
+```
+progress = (completed_phases / total_phases) * 100
+```
+
+Where completed phases are those with `status: "complete"` in the state file (or inferred from artifacts).
+
+### 6. Output Status Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPEC KIT AUTOPILOT — PIPELINE STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature:    {name}
+Directory:  {FEATURE_DIR}
+Pipeline:   {pipeline-id from state file, or "unknown"}
+Started:    {timestamp from state, or "unknown"}
+Progress:   {percentage}%
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Phase            │ Status       │ Details                       │
+├──────────────────┼──────────────┼───────────────────────────────┤
+│ 1. Specify       │ ✓ COMPLETE   │ spec.md created               │
+│ 2. Clarify       │ ✓ COMPLETE   │ 4 questions auto-answered     │
+│ 3. Plan          │ ✓ COMPLETE   │ 3 artifacts generated         │
+│ 4. Tasks         │ ✓ COMPLETE   │ 24 tasks (6 tests)            │
+│ 5. Validate      │ ✓ PASSED     │ All checks pass               │
+└─────────────────────────────────────────────────────────────────┘
+
+  — OR (if incomplete) —
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Phase            │ Status       │ Details                       │
+├──────────────────┼──────────────┼───────────────────────────────┤
+│ 1. Specify       │ ✓ COMPLETE   │ spec.md created               │
+│ 2. Clarify       │ ✗ FAILED     │ Error: <message>              │
+│ 3. Plan          │ ◌ PENDING    │ Not started                   │
+│ 4. Tasks         │ ◌ PENDING    │ Not started                   │
+│ 5. Validate      │ ◌ PENDING    │ Not started                   │
+└─────────────────────────────────────────────────────────────────┘
+
+Artifacts:
+  {✓/✗} spec.md              {path or "missing"}
+  {✓/✗} checklists/           {path or "missing"}
+  {✓/✗} research.md           {path or "missing"}
+  {✓/✗} plan.md               {path or "missing"}
+  {✓/✗} data-model.md         {path or "missing"}
+  {✓/✗} contracts/            {path or "missing"}
+  {✓/✗} tasks.md              {path or "missing"}
+
+Task Breakdown (if tasks.md exists):
+  Total:              {N}
+  Completed:          {N}
+  Remaining:          {N}
+  Unit Tests:         {N}
+  Integration Tests:  {N}
+  Implementation:     {N}
+  User Stories:       {list}
+
+Test Enforcement:
+  Unit tests present:      {✓ YES / ✗ NO}
+  Integration tests present: {✓ YES / ✗ NO}
+  Validation passed:       {✓ YES / ✗ NO / — NOT RUN}
+
+Next Step: {recommended command}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### 7. Recommendations
+
+Based on the current state, suggest the next action:
+
+| Current State | Recommendation |
+|---------------|----------------|
+| Not started | `/speckit.autopilot.run <feature description>` |
+| Specify complete, clarify failed | `/speckit.autopilot.run` (resumes from clarify) |
+| Specify + Clarify done | `/speckit.autopilot.run` (resumes from plan) |
+| All phases done, tasks remain | `/speckit.implement` |
+| All phases done, tasks complete | `/speckit.analyze` |
+| Validation not run | `/speckit.autopilot.validate` |
+| Validation failed | `/speckit.autopilot.validate` (auto-fix) |

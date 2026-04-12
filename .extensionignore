@@ -1,0 +1,22 @@
+# Development files — not needed in installed extension
+tests/
+.github/
+.git/
+
+# Build artifacts
+__pycache__/
+*.pyc
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs source (keep README.md)
+CONTRIBUTING.md

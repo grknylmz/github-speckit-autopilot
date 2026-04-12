@@ -1,14 +1,16 @@
 # Spec Kit Autopilot
 
-A [spec-kit](https://github.com/github/spec-kit) extension that provides an automated pipeline for spec-driven development. Run a single command and the autopilot chains through specify, clarify, plan, and tasks — with auto-answered clarifications and enforced unit + integration test coverage.
+A [spec-kit](https://github.com/github/spec-kit) extension that provides an automated pipeline for spec-driven development. One command chains through specify, clarify, plan, and tasks — with auto-answered clarifications, enforced unit + integration test coverage, and pipeline state tracking for reliable resume.
 
 ## Features
 
-- **One-command pipeline**: `/speckit.autopilot.run <feature description>` runs the entire workflow
-- **Auto-answered clarifications**: All specification clarification questions are answered using best-practice recommendations
-- **Enforced test coverage**: Every generated task includes unit tests and integration tests — no optional test skipping
-- **Pipeline status check**: `/speckit.autopilot.status` shows which phases are complete and what's next
-- **Resume support**: Re-running autopilot detects existing artifacts and resumes from the right phase
+- **One-command pipeline**: `/speckit.autopilot.run <feature description>` orchestrates the entire workflow
+- **Delegates to core commands**: Orchestrates rather than re-implements — stays compatible as spec-kit evolves
+- **Auto-answered clarifications**: All specification questions answered using best-practice recommendations
+- **Enforced test coverage**: Every generated task includes unit tests and integration tests with post-generation validation
+- **Pipeline state file**: `autopilot-state.json` tracks exact phase status for reliable resume and status checks
+- **Configurable phases**: Skip phases, reorder them, or chain into implementation
+- **Validation command**: `/speckit.autopilot.validate` verifies test coverage with auto-fix
 
 ## Installation
 
@@ -17,10 +19,16 @@ cd /path/to/your/spec-kit-project
 specify extension add --dev /path/to/github-speckit-autopilot
 ```
 
-Or install from the repository:
+Or from a repository:
 
 ```bash
 specify extension add autopilot --from https://github.com/gurkanyilmaz/github-speckit-autopilot
+```
+
+Verify installation:
+
+```bash
+specify extension list
 ```
 
 ## Usage
@@ -31,12 +39,13 @@ specify extension add autopilot --from https://github.com/gurkanyilmaz/github-sp
 /speckit.autopilot.run Add user authentication with OAuth2 and JWT tokens
 ```
 
-This single command will:
+This orchestrates:
 
-1. **Specify** — Generate a feature specification from your description
-2. **Clarify** — Auto-answer up to 5 clarification questions with recommended options
-3. **Plan** — Generate the implementation plan with data models and contracts
-4. **Tasks** — Generate dependency-ordered tasks with enforced unit + integration tests
+1. **Specify** — Delegates to `/speckit.specify` to generate the feature spec, auto-resolves NEEDS CLARIFICATION markers
+2. **Clarify** — Delegates to `/speckit.clarify`, intercepts questions, auto-answers with recommended options
+3. **Plan** — Delegates to `/speckit.plan` for research, data model, contracts
+4. **Tasks** — Delegates to `/speckit.tasks` with test enforcement override (tests are mandatory)
+5. **Validate** — Built-in validation checks that all implementation tasks have corresponding tests
 
 ### Check Pipeline Status
 
@@ -44,50 +53,111 @@ This single command will:
 /speckit.autopilot.status
 ```
 
-Shows which phases are complete, what artifacts exist, and suggests the next command.
+Reads the pipeline state file and scans artifacts. Shows which phases are complete, task counts, test coverage status, and recommends the next action.
+
+### Validate Test Coverage
+
+```
+/speckit.autopilot.validate
+```
+
+Runs 6 validation checks on `tasks.md`:
+1. Implementation tasks have unit tests
+2. Integration points have integration tests
+3. TDD ordering (tests before implementation)
+4. Test file paths are specified
+5. Coverage sweep task exists
+6. Task IDs are sequential
+
+Offers auto-fix for any issues found.
+
+### Resume a Failed Pipeline
+
+Just re-run the same command — the state file tracks exactly where to resume:
+
+```
+/speckit.autopilot.run
+```
 
 ### After Autopilot
-
-Once the pipeline completes, you can:
 
 - `/speckit.implement` — Execute the generated task plan
 - `/speckit.analyze` — Check for cross-artifact consistency
 
 ## Configuration
 
-Configuration is stored in `.specify/extensions/autopilot/autopilot-config.yml`. Key settings:
+Located at `.specify/extensions/autopilot/autopilot-config.yml`.
+
+### Phase Configuration
+
+Control which phases run:
+
+```yaml
+pipeline:
+  phases:
+    - specify
+    - clarify
+    - plan
+    - tasks
+  chain_implement: false  # set true to auto-run /speckit.implement
+```
+
+Common configurations:
+- **Full pipeline**: `[specify, clarify, plan, tasks]`
+- **Skip clarify**: `[specify, plan, tasks]`
+- **Re-plan only**: `[plan, tasks]`
+- **Tasks only**: `[tasks]`
+
+### All Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `test_enforcement.unit_tests` | `true` | Always generate unit test tasks |
-| `test_enforcement.integration_tests` | `true` | Always generate integration test tasks |
-| `test_enforcement.coverage_target` | `80` | Minimum test coverage percentage |
+| `test_enforcement.unit_tests` | `true` | Generate unit test tasks |
+| `test_enforcement.integration_tests` | `true` | Generate integration test tasks |
+| `test_enforcement.coverage_target` | `80` | Minimum coverage percentage |
+| `test_enforcement.test_framework` | `"auto-detect"` | Test framework to use |
 | `clarify.auto_answer` | `true` | Auto-answer clarification questions |
-| `clarify.use_recommended` | `true` | Use AI-recommended option for each question |
-| `clarify.max_auto_questions` | `5` | Max clarification questions to auto-answer |
-| `pipeline.stop_on_failure` | `true` | Stop pipeline if any phase fails |
+| `clarify.use_recommended` | `true` | Use AI-recommended option |
+| `clarify.max_auto_questions` | `5` | Max questions to auto-answer |
+| `pipeline.phases` | `[specify, clarify, plan, tasks]` | Phases to execute |
+| `pipeline.chain_implement` | `false` | Auto-run implement after tasks |
+| `pipeline.stop_on_failure` | `true` | Stop on any phase failure |
 
-## Pipeline Phases
+## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌──────────────────┐
-│   SPECIFY   │────▶│   CLARIFY   │────▶│    PLAN     │────▶│     TASKS        │
-│             │     │  (auto-     │     │             │     │  (with enforced   │
-│  Generate   │     │  answered)  │     │  Research,  │     │  unit + integ.    │
-│  feature    │     │             │     │  data model,│     │  tests)           │
-│  spec       │     │  Resolve    │     │  contracts  │     │                   │
-│             │     │  ambiguity  │     │             │     │                   │
-└─────────────┘     └─────────────┘     └─────────────┘     └──────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     AUTOPILOT ORCHESTRATOR                       │
+│                                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐ │
+│  │ SPECIFY  │──▶│ CLARIFY  │──▶│   PLAN   │──▶│    TASKS     │ │
+│  │ (core)   │   │ (core +  │   │ (core)   │   │ (core + test │ │
+│  │          │   │  auto-   │   │          │   │  enforcement)│ │
+│  │          │   │  answer) │   │          │   │              │ │
+│  └──────────┘   └──────────┘   └──────────┘   └──────┬───────┘ │
+│       │              │              │                  │         │
+│       ▼              ▼              ▼                  ▼         │
+│  [state.json]   [state.json]  [state.json]     [validate +     │
+│   update         update        update           state.json]     │
+│                                                                  │
+│  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Test Enforcement
+Key design decisions:
+- **Orchestrator, not re-implementer** — Delegates to core commands, survives spec-kit updates
+- **State file over file-scanning** — `autopilot-state.json` gives precise resume, no guessing
+- **Post-generation validation** — Verifies test coverage was actually generated, auto-fixes gaps
+- **Additive enhancements** — Test strategy injection appends to core artifacts, doesn't modify them
 
-This is the core differentiator of the autopilot extension. The standard spec-kit tasks command makes tests optional. Autopilot overrides this:
+## Commands
 
-- **Every implementation task** gets a corresponding unit test task
-- **Every integration point** gets a corresponding integration test task
-- **Test tasks appear before implementation tasks** in each phase (TDD ordering)
-- **Coverage target** is enforced at the final polish phase
+| Command | Description |
+|---------|-------------|
+| `/speckit.autopilot.run` | Run the full pipeline |
+| `/speckit.autopilot.start` | Alias for `run` |
+| `/speckit.autopilot.status` | Check pipeline progress |
+| `/speckit.autopilot.validate` | Validate test coverage in tasks |
 
 ## Requirements
 
