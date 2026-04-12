@@ -22,11 +22,11 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 
 ## Installation
 
-### Option 1: Install from GitHub (Recommended)
+### Option 1: Install from GitHub ZIP (Recommended)
 
 ```bash
 cd /path/to/your/spec-kit-project
-specify extension add autopilot --from https://github.com/grknylmz/github-speckit-autopilot
+specify extension add autopilot --from https://github.com/grknylmz/github-speckit-autopilot/archive/refs/heads/main.zip
 ```
 
 ### Option 2: Install from Local Clone
