@@ -148,6 +148,7 @@ These guidelines will now be enforced during:
   → /speckit.plan    (constitution check phase)
   → /speckit.tasks   (task generation)
   → /speckit.implement (task execution)
+  → /speckit.autopilot.validate (post-implementation verification)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

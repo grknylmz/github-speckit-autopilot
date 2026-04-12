@@ -1,6 +1,6 @@
 # Spec Kit Autopilot
 
-A [spec-kit](https://github.com/github/spec-kit) extension that provides an automated pipeline for spec-driven development. One command chains through specify, clarify, plan, and tasks — with auto-answered clarifications, enforced unit + integration test coverage, **self-validating tasks**, and pipeline state tracking for reliable resume.
+A [spec-kit](https://github.com/github/spec-kit) extension that provides an automated pipeline for spec-driven development. One command chains through specify, clarify, plan, tasks, and implement — with auto-answered clarifications, enforced unit + integration test coverage, **self-validating tasks**, and pipeline state tracking for reliable resume.
 
 ## Features
 
@@ -10,7 +10,7 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 - **Enforced test coverage**: Every generated task includes unit tests and integration tests with post-generation validation
 - **Self-validating tasks**: Every feature includes a runnable check the autopilot executes to confirm it works (logging, smoke tests, assertions, health checks, etc.)
 - **Pipeline state file**: `autopilot-state.json` tracks exact phase status for reliable resume and status checks
-- **Configurable phases**: Skip phases, reorder them, or chain into implementation
+- **Configurable phases**: Skip phases, reorder them, or run a subset of the pipeline
 - **Validation command**: `/speckit.autopilot.validate` verifies test coverage, self-validation, and behavioral guideline compliance with auto-fix
 - **Behavioral constitution**: `/speckit.autopilot.constitution` merges coding rules (think-before-code, simplicity, surgical changes, goal-driven execution) into the project constitution
 
@@ -83,7 +83,8 @@ This orchestrates:
 2. **Clarify** — Delegates to `/speckit.clarify`, intercepts questions, auto-answers with recommended options
 3. **Plan** — Delegates to `/speckit.plan` for research, data model, contracts
 4. **Tasks** — Delegates to `/speckit.tasks` with 3-pillar enforcement: unit tests, integration tests, and self-validation (all mandatory)
-5. **Validate** — Built-in validation confirms all implementation tasks have tests + self-validation
+5. **Implement** — Delegates to `/speckit.implement` to execute all tasks, then runs self-validation checks and logs results
+6. **Validate** — Built-in validation confirms all implementation tasks have tests + self-validation (and post-implementation verification)
 
 ### Check Pipeline Status
 
@@ -99,7 +100,7 @@ Reads the pipeline state file and scans artifacts. Shows which phases are comple
 /speckit.autopilot.validate
 ```
 
-Runs 11 validation checks on `tasks.md`:
+Runs 14 validation checks on `tasks.md` (11 pre-implementation + 3 post-implementation):
 1. Implementation tasks have unit tests
 2. Integration points have integration tests
 3. TDD ordering (tests before implementation)
@@ -111,6 +112,11 @@ Runs 11 validation checks on `tasks.md`:
 9. Goal-driven tasks (every implementation task has explicit success criteria)
 10. Simplicity (single responsibility per task, no multi-responsibility bundling)
 11. Surgical (every implementation task specifies exact file paths)
+
+Post-implementation checks:
+12. All tasks marked complete (no remaining `- [ ]` tasks)
+13. Self-validation results (all checks in validation-results.log passed)
+14. Test suite pass (all tests passed after implementation)
 
 Offers auto-fix for any issues found.
 
@@ -124,7 +130,8 @@ Just re-run the same command — the state file tracks exactly where to resume:
 
 ### After Autopilot
 
-- `/speckit.implement` — Execute the generated task plan
+- `/speckit.autopilot.validate` — Re-validate test coverage and post-implementation results
+- `/speckit.autopilot.status` — View pipeline status anytime
 - `/speckit.analyze` — Check for cross-artifact consistency
 
 ## Configuration
@@ -142,14 +149,16 @@ pipeline:
     - clarify
     - plan
     - tasks
-  chain_implement: false  # set true to auto-run /speckit.implement
+    - implement
 ```
 
 Common configurations:
-- **Full pipeline**: `[specify, clarify, plan, tasks]`
-- **Skip clarify**: `[specify, plan, tasks]`
+- **Full pipeline**: `[specify, clarify, plan, tasks, implement]`
+- **Plan only (no execute)**: `[specify, clarify, plan, tasks]`
+- **Skip clarify**: `[specify, plan, tasks, implement]`
 - **Re-plan only**: `[plan, tasks]`
 - **Tasks only**: `[tasks]`
+- **Implement only**: `[implement]`
 
 ### All Settings
 
@@ -165,8 +174,7 @@ Common configurations:
 | `clarify.auto_answer` | `true` | Auto-answer clarification questions |
 | `clarify.use_recommended` | `true` | Use AI-recommended option |
 | `clarify.max_auto_questions` | `5` | Max questions to auto-answer |
-| `pipeline.phases` | `[specify, clarify, plan, tasks]` | Phases to execute |
-| `pipeline.chain_implement` | `false` | Auto-run implement after tasks |
+| `pipeline.phases` | `[specify, clarify, plan, tasks, implement]` | Phases to execute |
 | `pipeline.stop_on_failure` | `true` | Stop on any phase failure |
 
 ## Self-Validation
@@ -253,6 +261,16 @@ This appends the guidelines to `.specify/constitution.md` (idempotent — safe t
 │       ▼              ▼              ▼                  ▼         │
 │  [state.json]   [state.json]  [state.json]     [validate +     │
 │   update         update        update           state.json]     │
+│                                            │                     │
+│                                            ▼                     │
+│                                   ┌──────────────┐              │
+│                                   │  IMPLEMENT   │              │
+│                                   │  (core +     │              │
+│                                   │  self-val)   │              │
+│                                   └──────┬───────┘              │
+│                                          │                      │
+│                                          ▼                      │
+│                                  [validate + state.json]        │
 │                                                                  │
 │  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
 └─────────────────────────────────────────────────────────────────┘
@@ -277,7 +295,7 @@ Key design decisions:
 ## Requirements
 
 - spec-kit >= 0.1.0
-- Core commands: `speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`
+- Core commands: `speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.implement`
 
 ## License
 

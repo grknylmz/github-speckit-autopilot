@@ -4,7 +4,7 @@ extension:
   id: "autopilot"
   name: "Spec Kit Autopilot"
   version: "1.0.0"
-  description: "Automated pipeline orchestrating specify, clarify, plan, and tasks with auto-answered clarifications, enforced test coverage, and self-validating tasks"
+  description: "Automated pipeline orchestrating specify, clarify, plan, tasks, and implement with auto-answered clarifications, enforced test coverage, and self-validating tasks"
   author: "Gurkan Yilmaz"
   repository: "https://github.com/grknylmz/github-speckit-autopilot"
   license: "MIT"
@@ -16,6 +16,7 @@ requires:
     - "speckit.clarify"
     - "speckit.plan"
     - "speckit.tasks"
+    - "speckit.implement"
 
 provides:
   commands:
@@ -83,4 +84,4 @@ defaults:
       - clarify
       - plan
       - tasks
-    chain_implement: false
+      - implement

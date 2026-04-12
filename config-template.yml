@@ -78,16 +78,15 @@ pipeline:
 
   # Ordered list of phases to execute.
   # Remove phases to skip them. Common configurations:
-  #   Full pipeline:       [specify, clarify, plan, tasks]
-  #   Skip clarify:        [specify, plan, tasks]
+  #   Full pipeline:       [specify, clarify, plan, tasks, implement]
+  #   Plan only:           [specify, clarify, plan, tasks]
+  #   Skip clarify:        [specify, plan, tasks, implement]
   #   Only plan + tasks:   [plan, tasks]
   #   Only tasks:          [tasks]
+  #   Implement only:      [implement]
   phases:
     - specify
     - clarify
     - plan
     - tasks
-
-  # Automatically chain into /speckit.implement after tasks are generated
-  # WARNING: This can be expensive and hard to interrupt
-  chain_implement: false
+    - implement

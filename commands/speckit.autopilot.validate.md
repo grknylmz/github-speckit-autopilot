@@ -1,5 +1,5 @@
 ---
-description: "Validate that generated tasks have proper unit tests, integration tests, and self-validation coverage for all implementation tasks."
+description: "Validate that generated tasks have proper unit tests, integration tests, self-validation coverage for all implementation tasks, and post-implementation verification."
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -141,11 +141,41 @@ Verify that every implementation task specifies the exact file path(s) it will m
 
 **Failure detail**: List implementation tasks without file paths.
 
+#### Check 12: All Tasks Marked Complete (Post-Implementation)
+
+If the implement phase has run (state file shows `implement.status: "complete"` or tasks.md has any `[X]`/`[x]` marks), verify that ALL tasks are marked complete.
+
+**Pass condition**: No `- [ ] T{NNN}` lines remain in `tasks.md` (all are `- [X] T{NNN}` or `- [x] T{NNN}`).
+
+**Failure detail**: List the task IDs that are still incomplete.
+
+**Skip condition**: Skip this check if no tasks have been implemented yet (no `[X]`/`[x]` marks found).
+
+#### Check 13: Self-Validation Results (Post-Implementation)
+
+If `FEATURE_DIR/validation-results.log` exists (created during the implement phase), verify that all self-validation checks passed.
+
+**Pass condition**: Every self-validation entry in the results log shows PASS (no FAIL entries).
+
+**Failure detail**: List which self-validation tasks failed, including their error details.
+
+**Skip condition**: Skip this check if `validation-results.log` does not exist (implement phase hasn't run self-validation yet).
+
+#### Check 14: Test Suite Pass (Post-Implementation)
+
+If the implement phase has run, verify the test suite passed.
+
+**Pass condition**: The implementation state (`autopilot-state.json` → `implement.tests_passed`) is `true`, or there is no test failure evidence in the feature directory.
+
+**Failure detail**: Report which tests failed if evidence is available.
+
+**Skip condition**: Skip this check if the implement phase has not run.
+
 ### 5. Output Validation Report
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AUTOPILOT VALIDATION (3-Pillar)
+AUTOPILOT VALIDATION (3-Pillar + Post-Implementation)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature: {name}
@@ -172,8 +202,28 @@ Validation Results:
   ✓ Check 9: Goal-driven tasks (success criteria)    PASS
   ✓ Check 10: Simplicity (single responsibility)     PASS
   ✓ Check 11: Surgical (exact file paths)            PASS
+  — Check 12: All tasks complete                     SKIPPED (not implemented yet)
+  — Check 13: Self-validation results                SKIPPED (no results log)
+  — Check 14: Test suite pass                        SKIPPED (not implemented yet)
 
-  — OR —
+  — OR (post-implementation) —
+
+  ✓ Check 1: Implementation → Unit Test mapping    PASS
+  ✓ Check 2: Integration point coverage             PASS
+  ✓ Check 3: TDD ordering                           PASS
+  ✓ Check 4: Test file paths specified              PASS
+  ✓ Check 5: Coverage sweep task present            PASS
+  ✓ Check 6: Task ID continuity                     PASS
+  ✓ Check 7: Self-validation coverage               PASS
+  ✓ Check 8: Self-validation technique + criteria   PASS
+  ✓ Check 9: Goal-driven tasks (success criteria)    PASS
+  ✓ Check 10: Simplicity (single responsibility)     PASS
+  ✓ Check 11: Surgical (exact file paths)            PASS
+  ✓ Check 12: All tasks complete                     PASS (24/24)
+  ✓ Check 13: Self-validation results                PASS (6/6)
+  ✓ Check 14: Test suite pass                        PASS
+
+  — OR (failures) —
 
   ✗ Check 1: Implementation → Unit Test mapping    FAIL
     Missing unit tests for US2 (3 impl tasks, 0 test tasks)
@@ -188,7 +238,11 @@ Validation Results:
   ✓ Check 10: Simplicity (single responsibility)     PASS
   ✗ Check 11: Surgical (exact file paths)            FAIL
     T003, T007 have no file paths specified
-  ...
+  ✗ Check 12: All tasks complete                     FAIL
+    T008, T015, T022 still incomplete
+  ✓ Check 13: Self-validation results                PASS (5/5)
+  ✗ Check 14: Test suite pass                        FAIL
+    3 test failures in integration test suite
 
 Overall: ✓ VALID / ✗ {N} ISSUES FOUND
 
@@ -227,6 +281,12 @@ If validation fails and the user wants to fix:
 10. **Multi-responsibility tasks (Check 10)**: Split tasks that bundle multiple responsibilities into separate tasks. Each new task gets its own ID, file path, and success criteria. Re-number all task IDs.
 
 11. **Missing file paths (Check 11)**: For implementation tasks without file paths, infer the appropriate path from the project structure documented in `plan.md` and add it.
+
+12. **Incomplete tasks (Check 12)**: Cannot auto-fix. Report the incomplete tasks and suggest running `/speckit.implement` or `/speckit.autopilot.run` with `implement` in the phases list to complete them.
+
+13. **Self-validation failures (Check 13)**: Cannot auto-fix. Report which self-validation checks failed with their details. Suggest investigating the implementation for the failing tasks and re-running.
+
+14. **Test suite failures (Check 14)**: Cannot auto-fix. Report the failing tests and suggest investigating the implementation. The user may need to fix the code and re-run tests manually.
 
 After auto-fix, re-run validation to confirm all checks pass.
 

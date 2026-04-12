@@ -46,7 +46,8 @@ Scan the feature directory for artifacts and infer phase status:
 | `spec.md` exists, no `## Clarifications` with "Autopilot Session" | Specify done |
 | `spec.md` has "Autopilot Session" clarifications | Specify + Clarify done |
 | `plan.md` exists | Specify + Clarify + Plan done |
-| `tasks.md` exists | All phases done |
+| `tasks.md` exists, some tasks `- [ ]` | Tasks done, implement not started |
+| `tasks.md` exists, all tasks `- [X]` or `- [x]` | Tasks + Implement done |
 
 ### 3. Scan Artifacts
 
@@ -63,6 +64,7 @@ Regardless of state file presence, scan the feature directory for these artifact
 | Contracts | `contracts/` | Plan |
 | Quickstart | `quickstart.md` | Plan |
 | Tasks | `tasks.md` | Tasks |
+| Validation Results | `validation-results.log` | Implement |
 | Validation State | `autopilot-state.json` | Validate |
 
 ### 4. Parse Task Details (if tasks.md exists)
@@ -107,7 +109,8 @@ Progress:   {percentage}%
 │ 2. Clarify       │ ✓ COMPLETE   │ 4 questions auto-answered     │
 │ 3. Plan          │ ✓ COMPLETE   │ 3 artifacts generated         │
 │ 4. Tasks         │ ✓ COMPLETE   │ 24 tasks (6 tests)            │
-│ 5. Validate      │ ✓ PASSED     │ All checks pass               │
+│ 5. Implement     │ ✓ COMPLETE   │ 24/24 tasks, 6/6 self-val     │
+│ 6. Validate      │ ✓ PASSED     │ All checks pass               │
 └─────────────────────────────────────────────────────────────────┘
 
   — OR (if incomplete) —
@@ -119,7 +122,8 @@ Progress:   {percentage}%
 │ 2. Clarify       │ ✗ FAILED     │ Error: <message>              │
 │ 3. Plan          │ ◌ PENDING    │ Not started                   │
 │ 4. Tasks         │ ◌ PENDING    │ Not started                   │
-│ 5. Validate      │ ◌ PENDING    │ Not started                   │
+│ 5. Implement     │ ◌ PENDING    │ Not started                   │
+│ 6. Validate      │ ◌ PENDING    │ Not started                   │
 └─────────────────────────────────────────────────────────────────┘
 
 Artifacts:
@@ -145,6 +149,12 @@ Test Enforcement:
   Integration tests present: {✓ YES / ✗ NO}
   Validation passed:       {✓ YES / ✗ NO / — NOT RUN}
 
+Self-Validation Results (if implement ran):
+  Total checks:           {N}
+  Passed:                 {N}
+  Failed:                 {N}
+  Results log:            {path or "not run"}
+
 Next Step: {recommended command}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -159,7 +169,8 @@ Based on the current state, suggest the next action:
 | Not started | `/speckit.autopilot.run <feature description>` |
 | Specify complete, clarify failed | `/speckit.autopilot.run` (resumes from clarify) |
 | Specify + Clarify done | `/speckit.autopilot.run` (resumes from plan) |
-| All phases done, tasks remain | `/speckit.implement` |
+| Tasks done, implement not started | `/speckit.autopilot.run` (resumes from implement) |
+| Implement in progress | `/speckit.autopilot.run` (resumes from failed task) |
 | All phases done, tasks complete | `/speckit.analyze` |
 | Validation not run | `/speckit.autopilot.validate` |
 | Validation failed | `/speckit.autopilot.validate` (auto-fix) |

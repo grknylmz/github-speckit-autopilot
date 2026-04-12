@@ -7,7 +7,7 @@ scripts:
 
 # Spec Kit Autopilot
 
-Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, self-validating tasks, and pipeline state tracking.
+Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, self-validating tasks, task execution, and pipeline state tracking.
 
 **Three mandatory pillars for every task**:
 1. **Unit tests** — Verify individual functions/methods work in isolation
@@ -45,6 +45,16 @@ This command is an **orchestrator**, not a re-implementation. It:
 │       ▼              ▼              ▼                  ▼         │
 │  [state.json]   [state.json]  [state.json]     [validate +     │
 │   update         update        update           state.json]     │
+│                                            │                     │
+│                                            ▼                     │
+│                                   ┌──────────────┐              │
+│                                   │  IMPLEMENT   │              │
+│                                   │  (core +     │              │
+│                                   │  self-val)   │              │
+│                                   └──────┬───────┘              │
+│                                          │                      │
+│                                          ▼                      │
+│                                  [validate + state.json]        │
 │                                                                  │
 │  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
 └─────────────────────────────────────────────────────────────────┘
@@ -73,8 +83,7 @@ Before any pipeline phase runs, ensure the project constitution includes autopil
 
 Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge with extension defaults. Key configuration:
 
-- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks"]`). Users can remove phases to skip them.
-- `pipeline.chain_implement` — If `true`, also run `/speckit.implement` after tasks (default: `false`).
+- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks", "implement"]`). Users can remove phases to skip them.
 - `pipeline.stop_on_failure` — Halt on any phase failure (default: `true`).
 - `clarify.auto_answer` — Auto-answer clarification questions (default: `true`).
 - `clarify.use_recommended` — Use recommended option (default: `true`).
@@ -104,11 +113,12 @@ If `FEATURE_DIR/autopilot-state.json` exists, read it and determine which phases
   "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
   "feature_directory": "specs/003-feature-name",
   "phases": {
-    "specify": { "status": "complete", "completed_at": "..." },
-    "clarify": { "status": "complete", "completed_at": "...", "questions_answered": 4 },
-    "plan":    { "status": "failed",   "error": "..." },
-    "tasks":   { "status": "pending" },
-    "validate":{ "status": "pending" }
+    "specify":  { "status": "complete", "completed_at": "..." },
+    "clarify":  { "status": "complete", "completed_at": "...", "questions_answered": 4 },
+    "plan":     { "status": "failed",   "error": "..." },
+    "tasks":    { "status": "pending" },
+    "implement":{ "status": "pending" },
+    "validate": { "status": "pending" }
   },
   "started_at": "...",
   "last_updated_at": "..."
@@ -125,7 +135,8 @@ If no state file exists, fall back to artifact detection:
 - `spec.md` exists → Specify is done, start from next incomplete phase
 - `spec.md` has `## Clarifications` section with `Autopilot Session` → Clarify is done
 - `plan.md` exists → Plan is done
-- `tasks.md` exists → Tasks are done, run validation only
+- `tasks.md` exists → Tasks are done
+- `tasks.md` has all tasks marked `[X]` or `[x]` → Implement is done, run validation only
 
 ### 0.4 Initialize State File
 
@@ -136,11 +147,12 @@ Create or update `FEATURE_DIR/autopilot-state.json`:
   "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
   "feature_directory": "<resolved-path>",
   "phases": {
-    "specify":  { "status": "pending" },
-    "clarify":  { "status": "pending" },
-    "plan":     { "status": "pending" },
-    "tasks":    { "status": "pending" },
-    "validate": { "status": "pending" }
+    "specify":   { "status": "pending" },
+    "clarify":   { "status": "pending" },
+    "plan":      { "status": "pending" },
+    "tasks":     { "status": "pending" },
+    "implement": { "status": "pending" },
+    "validate":  { "status": "pending" }
   },
   "started_at": "<ISO-timestamp>",
   "last_updated_at": "<ISO-timestamp>"
@@ -513,11 +525,86 @@ Validation: ✓ All implementation tasks have tests + self-validation
 
 ---
 
-## Step 5: VALIDATE (Built-In)
+## Step 5: IMPLEMENT (Delegate + Self-Validation Execution)
+
+**Skip if** `implement` is not in `pipeline.phases` or state shows `complete`.
+
+### 5.1 Execute
+
+Run the `/speckit.implement` command workflow. **Follow the core command's instructions exactly** — do not re-implement its logic. The core command handles:
+
+- Pre-execution extension hook checking
+- Checklist status validation
+- Project setup verification (ignore files)
+- Task parsing and phase-by-phase execution
+- Progress tracking and error handling
+- Completion validation
+- Post-implementation extension hook checking
+
+### 5.2 Autopilot Enhancement: Execute Self-Validation Steps
+
+**After** the core implement command completes all tasks, execute the self-validation steps that were defined during the Tasks phase:
+
+1. Parse `tasks.md` for all self-validation tasks (lines containing "self-validation" or "self validation")
+2. For each self-validation task:
+   - Execute the validation command/check described in the task
+   - Evaluate against the success criteria defined in the task
+   - Record the result (PASS/FAIL) with details
+3. Write results to `FEATURE_DIR/validation-results.log`:
+   ```
+   Self-Validation Results — {timestamp}
+   ============================================================
+   T{NNN}: {description}
+     Technique: {technique}
+     Validation: {check executed}
+     Result: ✓ PASS / ✗ FAIL
+     Details: {output or error message}
+   ---
+   Summary: {N}/{M} passed
+   ============================================================
+   ```
+4. If any self-validation fails:
+   - Report the failures with details
+   - Update state with failure information
+   - Do NOT proceed to validate phase — let the user investigate
+
+### 5.3 Update State
+
+```json
+"implement": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "tasks_total": N,
+  "tasks_completed": N,
+  "tests_passed": true,
+  "self_validation_passed": true,
+  "self_validation_results": "<path-to-validation-log>",
+  "validation_results_path": "FEATURE_DIR/validation-results.log"
+}
+```
+
+### 5.4 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 5/6: IMPLEMENT (Core + Self-Validation) ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tasks Completed:  {N} / {N}
+Test Suite:       {✓ PASSED / ✗ FAILED}
+Self-Validation:  {N} / {N} passed
+Results Log:      {path}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**On failure**: Update state with `"status": "failed"` and error details. The core implement command marks completed tasks as `[X]` in `tasks.md`, so re-running will skip completed tasks and resume from the failed one.
+
+---
+
+## Step 6: VALIDATE (Built-In)
 
 After all pipeline phases complete, run a final validation.
 
-### 5.1 Validate Artifacts Exist
+### 6.1 Validate Artifacts Exist
 
 | Artifact | Required | Phase |
 |----------|----------|-------|
@@ -531,7 +618,7 @@ Optional artifacts (warn if expected but missing):
 - `research.md` — Expected if plan had NEEDS CLARIFICATION items
 - `checklists/requirements.md` — Expected after specify
 
-### 5.2 Validate Test Coverage and Self-Validation in Tasks
+### 6.2 Validate Test Coverage and Self-Validation in Tasks
 
 Re-run the validation from Step 4.4 and confirm:
 - Unit test tasks exist for implementation tasks
@@ -540,7 +627,15 @@ Re-run the validation from Step 4.4 and confirm:
 - No implementation task is missing its corresponding test or self-validation
 - Every self-validation task specifies a technique and success criteria
 
-### 5.3 Update State
+### 6.3 Validate Implementation Results (if implement phase ran)
+
+If the implement phase completed (state shows `implement.status: "complete"`):
+- All tasks in `tasks.md` are marked `[X]` or `[x]`
+- Self-validation results log exists and all checks passed
+- Test suite passed
+- No remaining `- [ ] T{NNN}` tasks
+
+### 6.4 Update State
 
 ```json
 "validate": {
@@ -550,19 +645,6 @@ Re-run the validation from Step 4.4 and confirm:
   "test_coverage_valid": true,
   "warnings": []
 }
-```
-
----
-
-## Step 6: Optional — CHAIN TO IMPLEMENT
-
-If `pipeline.chain_implement` is `true`, automatically proceed to `/speckit.implement` after tasks are validated.
-
-This is off by default. Enable in `autopilot-config.yml`:
-
-```yaml
-pipeline:
-  chain_implement: true
 ```
 
 ---
@@ -582,6 +664,7 @@ pipeline:
 ║  Phase 2 — Clarify:    ✓ COMPLETE   ({N} questions auto-answered)║
 ║  Phase 3 — Plan:       ✓ COMPLETE   ({N} artifacts)              ║
 ║  Phase 4 — Tasks:      ✓ COMPLETE   ({N} tasks)                  ║
+║  Phase 5 — Implement:  ✓ COMPLETE   ({N}/{N} tasks, {N} passed)  ║
 ║  Validation:           ✓ PASSED                                  ║
 ║                                                                   ║
 ║  Test Coverage:                                                   ║
@@ -593,12 +676,13 @@ pipeline:
 ║    {spec.md}                                                      ║
 ║    {plan.md}                                                      ║
 ║    {tasks.md}                                                     ║
+║    {validation-results.log}                                       ║
 ║    {additional artifacts...}                                      ║
 ║                                                                   ║
 ║  Next Steps:                                                      ║
-║    → /speckit.implement     Execute the task plan                 ║
 ║    → /speckit.autopilot.validate  Re-validate test coverage      ║
 ║    → /speckit.autopilot.status    View pipeline status anytime   ║
+║    → /speckit.analyze             Check cross-artifact consistency║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
@@ -668,6 +752,16 @@ If a phase partially completes (e.g., spec written but validation failed):
       "integration_test_tasks": "number",
       "self_validation_tasks": "number",
       "validation_passed": "boolean"
+    },
+    "implement": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "tasks_total": "number",
+      "tasks_completed": "number",
+      "tests_passed": "boolean",
+      "self_validation_passed": "boolean",
+      "validation_results_path": "string or null"
     },
     "validate": {
       "status": "pending | running | complete | failed",
