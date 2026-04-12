@@ -4,9 +4,9 @@ extension:
   id: "autopilot"
   name: "Spec Kit Autopilot"
   version: "1.0.0"
-  description: "Automated pipeline orchestrating specify, clarify, plan, and tasks with auto-answered clarifications and enforced test coverage"
+  description: "Automated pipeline orchestrating specify, clarify, plan, and tasks with auto-answered clarifications, enforced test coverage, and self-validating tasks"
   author: "Gurkan Yilmaz"
-  repository: "https://github.com/gurkanyilmaz/github-speckit-autopilot"
+  repository: "https://github.com/grknylmz/github-speckit-autopilot"
   license: "MIT"
 
 requires:
@@ -31,7 +31,11 @@ provides:
 
     - name: "speckit.autopilot.validate"
       file: "commands/speckit.autopilot.validate.md"
-      description: "Validate that generated tasks have proper unit and integration test coverage"
+      description: "Validate that generated tasks have proper unit tests, integration tests, self-validation, and follow behavioral guidelines"
+
+    - name: "speckit.autopilot.constitution"
+      file: "commands/speckit.autopilot.constitution.md"
+      description: "Merge autopilot behavioral guidelines (think-before-code, simplicity, surgical changes, goal-driven) into the project constitution"
 
   config:
     - name: "autopilot-config.yml"
@@ -53,6 +57,20 @@ defaults:
     enforce_for_all_tasks: true
     test_framework: "auto-detect"
     coverage_target: 80
+  self_validation:
+    enabled: true
+    techniques:
+      - logging
+      - smoke
+      - assertion
+      - build
+      - schema
+      - health
+      - dry-run
+      - idempotency
+      - contract
+      - snapshot
+    log_results: true
   clarify:
     auto_answer: true
     use_recommended: true

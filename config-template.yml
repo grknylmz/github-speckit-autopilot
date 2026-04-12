@@ -23,6 +23,33 @@ test_enforcement:
   # Minimum test coverage target (percentage) — enforced in final phase
   coverage_target: 80
 
+# ─── Self-Validation ──────────────────────────────────────────────
+# Every feature built through autopilot MUST include self-validation
+# that the system can execute to confirm it works without human input.
+
+self_validation:
+  # Enable self-validation task generation (always true in autopilot)
+  enabled: true
+
+  # Validation techniques to include in generated tasks.
+  # The most appropriate technique is chosen per task automatically.
+  # Remove techniques you don't want used.
+  techniques:
+    - logging           # Log structured output; autopilot checks log contents
+    - smoke             # Quick runtime check (curl, health endpoint, etc.)
+    - assertion         # Runtime assertions in code (assert(), expect(), etc.)
+    - build             # Build/typecheck/lint passes with zero errors
+    - schema            # Schema/file validation (prisma validate, JSON schema, etc.)
+    - health            # Health/readiness endpoint returns expected payload
+    - dry-run           # --dry-run flag outputs what would happen
+    - idempotency       # Run twice, verify identical output/state
+    - contract          # Response matches expected JSON/protobuf schema
+    - snapshot          # Output compared against golden snapshot
+
+  # Generate a validation-results.log in the feature directory
+  # when self-validation tasks are executed
+  log_results: true
+
 # ─── Clarification Behavior ────────────────────────────────────────
 # Controls how the autopilot handles spec clarification.
 

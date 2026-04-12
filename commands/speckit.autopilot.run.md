@@ -7,7 +7,12 @@ scripts:
 
 # Spec Kit Autopilot
 
-Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, and pipeline state tracking.
+Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, self-validating tasks, and pipeline state tracking.
+
+**Three mandatory pillars for every task**:
+1. **Unit tests** — Verify individual functions/methods work in isolation
+2. **Integration tests** — Verify components work together correctly
+3. **Self-validation** — Each feature built must include a runnable verification that the autopilot can execute to confirm it works without human intervention
 
 ## User Input
 
@@ -23,7 +28,7 @@ This command is an **orchestrator**, not a re-implementation. It:
 
 1. Runs each core command in sequence
 2. Intercepts and auto-answers clarification questions
-3. Post-processes generated tasks to enforce test coverage
+3. Post-processes generated tasks to enforce test coverage and self-validation
 4. Persists pipeline state for resume support
 
 ```
@@ -49,6 +54,21 @@ This command is an **orchestrator**, not a re-implementation. It:
 
 ## Step 0: Initialization
 
+### 0.0 Ensure Behavioral Constitution
+
+Before any pipeline phase runs, ensure the project constitution includes autopilot behavioral guidelines:
+
+1. Check if the constitution file (`.specify/constitution.md` or `/memory/constitution.md`) contains the `AUTOPILOT-BEHAVIORAL-GUIDELINES` marker.
+2. If the marker is **not present**, execute `/speckit.autopilot.constitution` to merge the guidelines into the constitution.
+3. If the marker **is present**, skip — guidelines are already in place.
+4. These guidelines will be loaded by `/speckit.plan` during its constitution check phase, ensuring all subsequent tasks follow the behavioral rules.
+
+**The 4 behavioral rules** (enforced throughout the pipeline):
+- **Think Before Coding** — State assumptions, surface tradeoffs, ask before assuming
+- **Simplicity First** — Minimum code, no speculative features, no over-abstraction
+- **Surgical Changes** — Touch only what you must, match existing style
+- **Goal-Driven Execution** — Every task has explicit success criteria, verify before moving on
+
 ### 0.1 Load Configuration
 
 Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge with extension defaults. Key configuration:
@@ -61,6 +81,8 @@ Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge wi
 - `clarify.max_auto_questions` — Max questions to auto-answer (default: `5`).
 - `test_enforcement.unit_tests` — Enforce unit tests (always `true` in autopilot).
 - `test_enforcement.integration_tests` — Enforce integration tests (always `true` in autopilot).
+- `self_validation.enabled` — Enforce self-validation tasks (always `true` in autopilot).
+- `self_validation.techniques` — Validation techniques to include (default: `["logging", "smoke", "assertion"]`).
 
 ### 0.2 Detect or Create Feature Directory
 
@@ -314,56 +336,127 @@ Test Framework: {detected}
 Run the `/speckit.tasks` command workflow. **Follow the core command's instructions** for:
 
 - Running prerequisite scripts
-- Loading all design artifacts
+- Loading all design artifacts (including constitution with behavioral guidelines)
 - Task generation organized by user story
 - Dependency graph, parallel execution examples
 
-### 4.2 Autopilot Override: Tests Are Mandatory
+**Behavioral rule enforcement during task generation**:
+- **Goal-Driven Execution (Rule 4)**: Every task description must include explicit success criteria — not just "implement X" but "implement X, verify: {check}". Tasks without success criteria are rejected.
+- **Simplicity First (Rule 2)**: Each task must have one clear responsibility. If a task does three things, split it into three tasks. No speculative additions beyond what the spec/plan requires.
+- **Surgical Changes (Rule 3)**: Task descriptions must specify exact file paths. No vague "update related files" tasks. Every changed line must trace to the spec.
+- **Think Before Coding (Rule 1)**: If a task has ambiguous requirements, include a sub-step to surface assumptions before implementing.
+
+### 4.2 Autopilot Override: Tests + Self-Validation Are Mandatory
 
 **Override the core command's default behavior**: The core `/speckit.tasks` says "Tests are OPTIONAL". The autopilot **inverts this rule**:
 
 - **Tests are ALWAYS MANDATORY** when run through autopilot
 - Every implementation task that creates/modifies code MUST have corresponding test tasks
-- Apply the test enforcement rules below during generation
+- Every feature built MUST include a self-validation step the autopilot can execute to confirm it works
+- Apply the enforcement rules below during generation
 
-### 4.3 Test Enforcement Rules
+### 4.3 Three-Pillar Enforcement Rules
 
 These rules apply when generating tasks. They are **non-negotiable** in autopilot mode.
 
-**Unit Tests** — Required for every task that:
+#### Pillar 1: Unit Tests
+
+Required for every task that:
 - Creates or modifies a function, method, class, or component
 - Implements business logic, validation, or data transformation
 - Creates a utility, helper, or service method
 - Builds an API endpoint handler
 
-**Integration Tests** — Required for every task that:
+#### Pillar 2: Integration Tests
+
+Required for every task that:
 - Connects to a database or external data store
 - Creates or modifies an API endpoint
 - Integrates with an external service or API
 - Implements middleware, auth, or event handling
 - Performs file I/O or message queue operations
 
-**Task ordering** (TDD approach within each user story phase):
-1. Unit test tasks first (before the implementation they test)
-2. Implementation tasks
-3. Integration test tasks (after the components they integrate)
+#### Pillar 3: Self-Validation (CRITICAL)
 
-**Task format**:
+**Every implementation task MUST include a self-validation mechanism** — a runnable check that the autopilot can execute to confirm the feature works without human intervention.
+
+Self-validation answers the question: "After this task is implemented, how can the system prove to itself that it works?"
+
+**Self-validation techniques** (at least ONE per implementation task, choose the most appropriate):
+
+| Technique | When to Use | Example |
+|-----------|-------------|---------|
+| **Logging** | Any task that processes data, handles requests, or performs transformations | `logger.info("Order created", {id, total, items_count});` — autopilot checks log output contains expected values |
+| **Smoke test** | API endpoints, services, CLI commands, UI components | `curl -f http://localhost:3000/api/health || exit 1` — autopilot runs and checks exit code |
+| **Assertion check** | Business logic, calculations, data transformations | `assert(user.age >= 0, "Age must be non-negative")` — autopilot runs assertions |
+| **Build verification** | New modules, components, configurations | `npm run build && npm run typecheck` — autopilot confirms zero errors |
+| **Schema/file validation** | Data models, config files, migrations | `npx prisma validate && npx prisma migrate status` — autopilot confirms schema is valid |
+| **Health endpoint** | Services, APIs, servers | `GET /health` returns `{status: "ok", version: "..."}` — autopilot calls and verifies response |
+| **Dry-run / preview** | Destructive or complex operations | `--dry-run` flag that outputs what would happen without executing — autopilot checks output |
+| **Idempotency check** | State mutations, database writes | Run twice, verify output/state is identical — autopilot detects drift |
+| **Contract assertion** | APIs, integrations | Response matches expected JSON schema — autopilot validates schema |
+| **Snapshot comparison** | Output generation, reports, templates | Compare output against golden snapshot — autopilot detects deviations |
+
+**Self-validation task format**:
+
+```text
+- [ ] T{NNN} [US{N}] Add self-validation for {Component} in {source-path}
+  - Technique: {logging|smoke|assertion|build|schema|health|dry-run|idempotency|contract|snapshot}
+  - Validation: {specific check the autopilot will execute}
+  - Success criteria: {what "pass" looks like — exit code 0, log contains X, response matches Y}
+```
+
+**Examples**:
+
+```text
+- [ ] T{NNN} [US1] Add self-validation for OrderService in src/services/order.service.ts
+  - Technique: logging + assertion
+  - Validation: Log order creation with id, total, items_count; assert total > 0 after calculation
+  - Success criteria: Log line "[OrderService] Created order {id} total=${total} items={N}" appears; assert(total > 0) passes
+
+- [ ] T{NNN} [US1] Add self-validation for POST /api/orders endpoint in src/routes/orders.ts
+  - Technique: smoke test + health endpoint
+  - Validation: curl -f -X POST /api/orders with valid payload returns 201; GET /api/health returns ok
+  - Success criteria: HTTP 201 with {id, status: "created"}; health endpoint returns 200
+
+- [ ] T{NNN} [US2] Add self-validation for user schema migration in migrations/001_users.sql
+  - Technique: schema validation
+  - Validation: npx prisma validate && npx prisma migrate status
+  - Success criteria: "Schema is valid" + "Database schema is up to date"
+```
+
+#### Task ordering (TDD approach within each user story phase):
+
+1. Unit test tasks first (before the implementation they test)
+2. Implementation tasks (with self-validation built into the implementation)
+3. Self-validation task (explicit verification step the autopilot runs)
+4. Integration test tasks (after the components they integrate)
+
+**Complete task format per implementation unit**:
 ```text
 - [ ] T{NNN} [P] [US{N}] Write unit tests for {Component} in {test-path}
   - Test: {scenario 1}
   - Test: {scenario 2}
 - [ ] T{NNN} [P] [US{N}] Implement {Component} in {source-path}
+- [ ] T{NNN} [US{N}] Add self-validation for {Component} in {source-path}
+  - Technique: {technique}
+  - Validation: {check}
+  - Success criteria: {expected outcome}
 - [ ] T{NNN} [P] [US{N}] Write integration tests for {Feature} in {test-path}
   - Test: {scenario 1}
   - Test: {scenario 2}
 ```
 
-**Final phase** must include:
+#### Final phase must include:
+
 ```text
 - [ ] T{NNN} Run full unit test suite and verify all pass
 - [ ] T{NNN} Run full integration test suite and verify all pass
 - [ ] T{NNN} Verify test coverage meets target ({coverage_target}%)
+- [ ] T{NNN} Execute all self-validation steps and confirm each passes
+  - For each self-validation task: run the validation command, check success criteria
+  - Log results to FEATURE_DIR/validation-results.log
+- [ ] T{NNN} Generate validation report from self-validation results
 ```
 
 ### 4.4 Post-Generation Validation
@@ -372,14 +465,18 @@ These rules apply when generating tasks. They are **non-negotiable** in autopilo
 
 1. Parse all task lines from `tasks.md`
 2. Count:
-   - `impl_tasks` — tasks containing "Implement", "Create", "Build", "Add" (excluding test tasks)
+   - `impl_tasks` — tasks containing "Implement", "Create", "Build", "Add" (excluding test/validation tasks)
    - `unit_test_tasks` — tasks containing "unit test" (case-insensitive)
    - `integ_test_tasks` — tasks containing "integration test" (case-insensitive)
+   - `self_validation_tasks` — tasks containing "self-validation" or "self validation" (case-insensitive)
 3. Check:
    - `unit_test_tasks >= impl_tasks * 0.5` (at least 1 unit test per 2 implementation tasks)
    - `integ_test_tasks >= 1` (at least 1 integration test task exists)
+   - `self_validation_tasks >= impl_tasks * 0.5` (at least 1 self-validation per 2 implementation tasks)
+   - Every self-validation task specifies a technique and success criteria
 4. If validation fails:
    - **Inject missing test tasks** into `tasks.md` at the appropriate positions
+   - **Inject missing self-validation tasks** — generate appropriate self-validation for each uncovered implementation task
    - Re-number all task IDs to maintain sequential order
    - Log what was injected
 
@@ -392,6 +489,7 @@ These rules apply when generating tasks. They are **non-negotiable** in autopilo
   "total_tasks": N,
   "unit_test_tasks": N,
   "integration_test_tasks": N,
+  "self_validation_tasks": N,
   "implementation_tasks": N,
   "validation_passed": true
 }
@@ -400,16 +498,17 @@ These rules apply when generating tasks. They are **non-negotiable** in autopilo
 ### 4.6 Report
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AUTOMATION PHASE 4/4: TASKS (Test-Enforced) ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 4/4: TASKS (3-Pillar Enforced) ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tasks File: {path}
 Total Tasks: {N}
-  Implementation: {N}
-  Unit Tests:     {N}
-  Integration:    {N}
-Validation: ✓ All implementation tasks have corresponding tests
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Implementation:     {N}
+  Unit Tests:         {N}
+  Integration Tests:  {N}
+  Self-Validation:    {N}
+Validation: ✓ All implementation tasks have tests + self-validation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---
@@ -432,12 +531,14 @@ Optional artifacts (warn if expected but missing):
 - `research.md` — Expected if plan had NEEDS CLARIFICATION items
 - `checklists/requirements.md` — Expected after specify
 
-### 5.2 Validate Test Coverage in Tasks
+### 5.2 Validate Test Coverage and Self-Validation in Tasks
 
 Re-run the validation from Step 4.4 and confirm:
 - Unit test tasks exist for implementation tasks
 - Integration test tasks exist for integration-point tasks
-- No implementation task is missing its corresponding test
+- Self-validation tasks exist for implementation tasks
+- No implementation task is missing its corresponding test or self-validation
+- Every self-validation task specifies a technique and success criteria
 
 ### 5.3 Update State
 
@@ -486,6 +587,7 @@ pipeline:
 ║  Test Coverage:                                                   ║
 ║    Unit Tests:          {N} tasks (target: ≥80%)                  ║
 ║    Integration Tests:   {N} tasks                                ║
+║    Self-Validation:     {N} tasks (every feature self-verifies)   ║
 ║                                                                   ║
 ║  Artifacts:                                                       ║
 ║    {spec.md}                                                      ║
@@ -564,6 +666,7 @@ If a phase partially completes (e.g., spec written but validation failed):
       "total_tasks": "number",
       "unit_test_tasks": "number",
       "integration_test_tasks": "number",
+      "self_validation_tasks": "number",
       "validation_passed": "boolean"
     },
     "validate": {
@@ -572,6 +675,7 @@ If a phase partially completes (e.g., spec written but validation failed):
       "error": "string or null",
       "artifacts_valid": "boolean",
       "test_coverage_valid": "boolean",
+      "self_validation_valid": "boolean",
       "warnings": ["string"]
     }
   }
