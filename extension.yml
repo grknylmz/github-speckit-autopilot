@@ -1,0 +1,68 @@
+schema_version: "1.0"
+
+extension:
+  id: "autopilot"
+  name: "Spec Kit Autopilot"
+  version: "1.0.0"
+  description: "Automated pipeline orchestrating specify, clarify, plan, and tasks with auto-answered clarifications and enforced test coverage"
+  author: "Gurkan Yilmaz"
+  repository: "https://github.com/gurkanyilmaz/github-speckit-autopilot"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.1.0"
+  commands:
+    - "speckit.specify"
+    - "speckit.clarify"
+    - "speckit.plan"
+    - "speckit.tasks"
+
+provides:
+  commands:
+    - name: "speckit.autopilot.run"
+      file: "commands/speckit.autopilot.run.md"
+      description: "Orchestrate the full pipeline: specify → clarify (auto) → plan → tasks with enforced tests"
+      aliases:
+        - "speckit.autopilot.start"
+
+    - name: "speckit.autopilot.status"
+      file: "commands/speckit.autopilot.status.md"
+      description: "Check pipeline progress from the state file and artifact scan"
+
+    - name: "speckit.autopilot.validate"
+      file: "commands/speckit.autopilot.validate.md"
+      description: "Validate that generated tasks have proper unit and integration test coverage"
+
+  config:
+    - name: "autopilot-config.yml"
+      template: "config-template.yml"
+      description: "Autopilot configuration for test enforcement, clarification, and pipeline behavior"
+      required: false
+
+tags:
+  - "autopilot"
+  - "automation"
+  - "pipeline"
+  - "testing"
+  - "workflow"
+
+defaults:
+  test_enforcement:
+    unit_tests: true
+    integration_tests: true
+    enforce_for_all_tasks: true
+    test_framework: "auto-detect"
+    coverage_target: 80
+  clarify:
+    auto_answer: true
+    use_recommended: true
+    max_auto_questions: 5
+  pipeline:
+    stop_on_failure: true
+    verbose_logging: true
+    phases:
+      - specify
+      - clarify
+      - plan
+      - tasks
+    chain_implement: false

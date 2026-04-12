@@ -1,0 +1,16 @@
+# Development files
+tests/
+.github/
+
+# Build artifacts
+__pycache__/
+*.pyc
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

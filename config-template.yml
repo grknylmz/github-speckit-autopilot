@@ -1,0 +1,42 @@
+# Spec Kit Autopilot Configuration
+# Copy this to autopilot-config.yml and customize
+
+# Test enforcement settings
+test_enforcement:
+  # Always require unit tests for implementation tasks
+  unit_tests: true
+
+  # Always require integration tests for integration points
+  integration_tests: true
+
+  # Apply test requirements to ALL tasks, not just critical ones
+  enforce_for_all_tasks: true
+
+  # Test framework to use (auto-detect will infer from project)
+  # Options: auto-detect, jest, vitest, pytest, junit, go-test, xunit, rspec
+  test_framework: "auto-detect"
+
+  # Minimum test coverage target (percentage)
+  coverage_target: 80
+
+# Clarification behavior
+clarify:
+  # Auto-answer clarification questions using recommended options
+  auto_answer: true
+
+  # Use the AI-recommended option for each question
+  use_recommended: true
+
+  # Maximum number of clarification questions to auto-answer
+  max_auto_questions: 5
+
+# Pipeline behavior
+pipeline:
+  # Stop the entire pipeline if any phase fails
+  stop_on_failure: true
+
+  # Log detailed progress for each phase
+  verbose_logging: true
+
+  # Automatically proceed without confirmation between phases
+  auto_proceed: true

@@ -1,0 +1,579 @@
+---
+description: "Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks with enforced test coverage. Delegates to core commands and applies autopilot-specific post-processing."
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+---
+
+# Spec Kit Autopilot
+
+Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, and pipeline state tracking.
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Architecture
+
+This command is an **orchestrator**, not a re-implementation. It:
+
+1. Runs each core command in sequence
+2. Intercepts and auto-answers clarification questions
+3. Post-processes generated tasks to enforce test coverage
+4. Persists pipeline state for resume support
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     AUTOPILOT ORCHESTRATOR                       │
+│                                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐ │
+│  │ SPECIFY  │──▶│ CLARIFY  │──▶│   PLAN   │──▶│    TASKS     │ │
+│  │ (core)   │   │ (core +  │   │ (core)   │   │ (core + test │ │
+│  │          │   │  auto-   │   │          │   │  enforcement)│ │
+│  │          │   │  answer) │   │          │   │              │ │
+│  └──────────┘   └──────────┘   └──────────┘   └──────┬───────┘ │
+│       │              │              │                  │         │
+│       ▼              ▼              ▼                  ▼         │
+│  [state.json]   [state.json]  [state.json]     [validate +     │
+│   update         update        update           state.json]     │
+│                                                                  │
+│  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Step 0: Initialization
+
+### 0.1 Load Configuration
+
+Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge with extension defaults. Key configuration:
+
+- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks"]`). Users can remove phases to skip them.
+- `pipeline.chain_implement` — If `true`, also run `/speckit.implement` after tasks (default: `false`).
+- `pipeline.stop_on_failure` — Halt on any phase failure (default: `true`).
+- `clarify.auto_answer` — Auto-answer clarification questions (default: `true`).
+- `clarify.use_recommended` — Use recommended option (default: `true`).
+- `clarify.max_auto_questions` — Max questions to auto-answer (default: `5`).
+- `test_enforcement.unit_tests` — Enforce unit tests (always `true` in autopilot).
+- `test_enforcement.integration_tests` — Enforce integration tests (always `true` in autopilot).
+
+### 0.2 Detect or Create Feature Directory
+
+Run `{SCRIPT}` from repo root and parse JSON payload for `FEATURE_DIR` and `FEATURE_SPEC`.
+
+**If the script returns valid paths** (feature already exists):
+- Read `FEATURE_DIR/autopilot-state.json` if it exists to determine resume point.
+- If no state file, scan artifacts to determine resume point (see Resume Logic below).
+
+**If the script fails or no feature exists**:
+- The feature directory will be created by `/speckit.specify` in Phase 1.
+
+### 0.3 Resume Logic
+
+If `FEATURE_DIR/autopilot-state.json` exists, read it and determine which phases have already completed:
+
+```json
+{
+  "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
+  "feature_directory": "specs/003-feature-name",
+  "phases": {
+    "specify": { "status": "complete", "completed_at": "..." },
+    "clarify": { "status": "complete", "completed_at": "...", "questions_answered": 4 },
+    "plan":    { "status": "failed",   "error": "..." },
+    "tasks":   { "status": "pending" },
+    "validate":{ "status": "pending" }
+  },
+  "started_at": "...",
+  "last_updated_at": "..."
+}
+```
+
+**Resume rules**:
+- Phase with `status: "complete"` → Skip
+- Phase with `status: "failed"` → Retry (if `pipeline.stop_on_failure` is true, ask user first)
+- Phase with `status: "pending"` or missing → Execute
+- If all phases are `complete` → Run validation and report
+
+If no state file exists, fall back to artifact detection:
+- `spec.md` exists → Specify is done, start from next incomplete phase
+- `spec.md` has `## Clarifications` section with `Autopilot Session` → Clarify is done
+- `plan.md` exists → Plan is done
+- `tasks.md` exists → Tasks are done, run validation only
+
+### 0.4 Initialize State File
+
+Create or update `FEATURE_DIR/autopilot-state.json`:
+
+```json
+{
+  "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
+  "feature_directory": "<resolved-path>",
+  "phases": {
+    "specify":  { "status": "pending" },
+    "clarify":  { "status": "pending" },
+    "plan":     { "status": "pending" },
+    "tasks":    { "status": "pending" },
+    "validate": { "status": "pending" }
+  },
+  "started_at": "<ISO-timestamp>",
+  "last_updated_at": "<ISO-timestamp>"
+}
+```
+
+Update the state file **after each phase completes** (success or failure).
+
+---
+
+## Step 1: SPECIFY (Delegate to Core)
+
+**Skip if** `specify` is not in `pipeline.phases` or state shows `complete`.
+
+### 1.1 Execute
+
+Run the `/speckit.specify` command workflow with the user's feature description (`$ARGUMENTS`). **Follow the core command's instructions exactly** — do not re-implement its logic. The core command handles:
+
+- Short name generation
+- Feature directory and spec file creation
+- Specification quality validation
+- Checklist generation
+- Extension hook checking
+
+### 1.2 Autopilot Override: Auto-Resolve NEEDS CLARIFICATION
+
+After the core specify command writes the spec, **if any `[NEEDS CLARIFICATION: ...]` markers remain** (the core command limits these to 3 max):
+
+- For each marker, resolve it immediately using context and industry best practices
+- Replace the marker with a concrete decision
+- Document the resolution in the spec's Assumptions section
+
+Do NOT present clarification questions to the user at this stage — the clarify phase handles that.
+
+### 1.3 Update State
+
+Update `autopilot-state.json`:
+```json
+"specify": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "spec_file": "<path>",
+  "feature_directory": "<path>"
+}
+```
+
+### 1.4 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 1/4: SPECIFY ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Feature Directory: {path}
+Spec File: {path}
+Clarifications auto-resolved: {N}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**On failure**: Update state with `"status": "failed"` and error details. If `pipeline.stop_on_failure` is true, stop and report.
+
+---
+
+## Step 2: CLARIFY (Delegate + Auto-Answer Interception)
+
+**Skip if** `clarify` is not in `pipeline.phases` or state shows `complete`.
+
+This phase runs the core `/speckit.clarify` command but **intercepts the interactive questioning loop** to auto-answer.
+
+### 2.1 Execute with Auto-Answer Mode
+
+Run the `/speckit.clarify` command workflow. **Follow the core command's instructions** for:
+
+- Running prerequisite scripts
+- Loading the spec file
+- Performing the structured ambiguity scan across the full taxonomy
+- Generating the prioritized queue of clarification questions
+
+### 2.2 Autopilot Override: Auto-Answer All Questions
+
+**Instead of presenting questions to the user one at a time** (which the core command normally does), the autopilot intercepts:
+
+For **each** clarification question (up to `clarify.max_auto_questions`):
+
+1. Read the question and its options
+2. Determine the **recommended option** using:
+   - Best practices for the detected project type
+   - Risk reduction (security > performance > maintainability)
+   - Alignment with explicit project goals in the spec
+3. **Select the recommended option automatically** — do NOT output the question or wait for user input
+4. Record: `Auto-answered: [option] — [rationale]`
+5. Apply the clarification to the spec immediately (per core command's integration rules)
+
+For any **remaining ambiguities** beyond `max_auto_questions`:
+- Make informed guesses based on context
+- Document in the spec's Assumptions section
+
+### 2.3 Clarification Section Format
+
+Write all auto-answers into the spec under:
+
+```markdown
+## Clarifications
+
+### Autopilot Session YYYY-MM-DD
+
+> Autopilot auto-answered all clarification questions using recommended options.
+
+- Q: {question} → A: {answer} (Recommended — {1-sentence rationale})
+```
+
+Then apply each answer to the relevant spec sections following the core command's integration rules (functional requirements, data model, success criteria, etc.).
+
+### 2.4 Update State
+
+```json
+"clarify": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "questions_answered": N,
+  "categories_addressed": ["Functional Scope", "Data Model", "..."]
+}
+```
+
+### 2.5 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 2/4: CLARIFY ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Questions Auto-Answered: {N} / {max}
+Categories: {list}
+Spec Updated: {path}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Step 3: PLAN (Delegate to Core)
+
+**Skip if** `plan` is not in `pipeline.phases` or state shows `complete`.
+
+### 3.1 Execute
+
+Run the `/speckit.plan` command workflow. **Follow the core command's instructions exactly** for:
+
+- Running setup scripts
+- Loading the spec and constitution
+- Technical context, constitution check, gate evaluation
+- Phase 0: Research (resolve NEEDS CLARIFICATION)
+- Phase 1: Data model, contracts, quickstart, agent context update
+
+### 3.2 Autopilot Enhancement: Test Strategy Injection
+
+**After** the core plan command completes, enhance the generated artifacts with testing information:
+
+1. In `plan.md` Technical Context section, ensure the test framework and strategy are documented
+2. If `data-model.md` was generated, append a `## Validation Test Scenarios` section listing testable constraints per entity
+3. If `contracts/` were generated, ensure each contract includes test expectations
+
+These enhancements are **additive** — they append to what the core command already produced, without modifying existing content.
+
+### 3.3 Update State
+
+```json
+"plan": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "artifacts": ["plan.md", "data-model.md", "contracts/", "..."],
+  "test_framework": "<detected-or-configured>"
+}
+```
+
+### 3.4 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 3/4: PLAN ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Plan File: {path}
+Artifacts: {list}
+Test Framework: {detected}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Step 4: TASKS (Delegate + Test Enforcement Post-Processing)
+
+**Skip if** `tasks` is not in `pipeline.phases` or state shows `complete`.
+
+### 4.1 Execute with Override
+
+Run the `/speckit.tasks` command workflow. **Follow the core command's instructions** for:
+
+- Running prerequisite scripts
+- Loading all design artifacts
+- Task generation organized by user story
+- Dependency graph, parallel execution examples
+
+### 4.2 Autopilot Override: Tests Are Mandatory
+
+**Override the core command's default behavior**: The core `/speckit.tasks` says "Tests are OPTIONAL". The autopilot **inverts this rule**:
+
+- **Tests are ALWAYS MANDATORY** when run through autopilot
+- Every implementation task that creates/modifies code MUST have corresponding test tasks
+- Apply the test enforcement rules below during generation
+
+### 4.3 Test Enforcement Rules
+
+These rules apply when generating tasks. They are **non-negotiable** in autopilot mode.
+
+**Unit Tests** — Required for every task that:
+- Creates or modifies a function, method, class, or component
+- Implements business logic, validation, or data transformation
+- Creates a utility, helper, or service method
+- Builds an API endpoint handler
+
+**Integration Tests** — Required for every task that:
+- Connects to a database or external data store
+- Creates or modifies an API endpoint
+- Integrates with an external service or API
+- Implements middleware, auth, or event handling
+- Performs file I/O or message queue operations
+
+**Task ordering** (TDD approach within each user story phase):
+1. Unit test tasks first (before the implementation they test)
+2. Implementation tasks
+3. Integration test tasks (after the components they integrate)
+
+**Task format**:
+```text
+- [ ] T{NNN} [P] [US{N}] Write unit tests for {Component} in {test-path}
+  - Test: {scenario 1}
+  - Test: {scenario 2}
+- [ ] T{NNN} [P] [US{N}] Implement {Component} in {source-path}
+- [ ] T{NNN} [P] [US{N}] Write integration tests for {Feature} in {test-path}
+  - Test: {scenario 1}
+  - Test: {scenario 2}
+```
+
+**Final phase** must include:
+```text
+- [ ] T{NNN} Run full unit test suite and verify all pass
+- [ ] T{NNN} Run full integration test suite and verify all pass
+- [ ] T{NNN} Verify test coverage meets target ({coverage_target}%)
+```
+
+### 4.4 Post-Generation Validation
+
+**After** tasks.md is written, run an inline validation:
+
+1. Parse all task lines from `tasks.md`
+2. Count:
+   - `impl_tasks` — tasks containing "Implement", "Create", "Build", "Add" (excluding test tasks)
+   - `unit_test_tasks` — tasks containing "unit test" (case-insensitive)
+   - `integ_test_tasks` — tasks containing "integration test" (case-insensitive)
+3. Check:
+   - `unit_test_tasks >= impl_tasks * 0.5` (at least 1 unit test per 2 implementation tasks)
+   - `integ_test_tasks >= 1` (at least 1 integration test task exists)
+4. If validation fails:
+   - **Inject missing test tasks** into `tasks.md` at the appropriate positions
+   - Re-number all task IDs to maintain sequential order
+   - Log what was injected
+
+### 4.5 Update State
+
+```json
+"tasks": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "total_tasks": N,
+  "unit_test_tasks": N,
+  "integration_test_tasks": N,
+  "implementation_tasks": N,
+  "validation_passed": true
+}
+```
+
+### 4.6 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 4/4: TASKS (Test-Enforced) ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tasks File: {path}
+Total Tasks: {N}
+  Implementation: {N}
+  Unit Tests:     {N}
+  Integration:    {N}
+Validation: ✓ All implementation tasks have corresponding tests
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Step 5: VALIDATE (Built-In)
+
+After all pipeline phases complete, run a final validation.
+
+### 5.1 Validate Artifacts Exist
+
+| Artifact | Required | Phase |
+|----------|----------|-------|
+| `spec.md` | Yes | Specify |
+| `plan.md` | Yes | Plan |
+| `tasks.md` | Yes | Tasks |
+
+Optional artifacts (warn if expected but missing):
+- `data-model.md` — Expected if feature involves data
+- `contracts/` — Expected if feature has external interfaces
+- `research.md` — Expected if plan had NEEDS CLARIFICATION items
+- `checklists/requirements.md` — Expected after specify
+
+### 5.2 Validate Test Coverage in Tasks
+
+Re-run the validation from Step 4.4 and confirm:
+- Unit test tasks exist for implementation tasks
+- Integration test tasks exist for integration-point tasks
+- No implementation task is missing its corresponding test
+
+### 5.3 Update State
+
+```json
+"validate": {
+  "status": "complete",
+  "completed_at": "<ISO-timestamp>",
+  "artifacts_valid": true,
+  "test_coverage_valid": true,
+  "warnings": []
+}
+```
+
+---
+
+## Step 6: Optional — CHAIN TO IMPLEMENT
+
+If `pipeline.chain_implement` is `true`, automatically proceed to `/speckit.implement` after tasks are validated.
+
+This is off by default. Enable in `autopilot-config.yml`:
+
+```yaml
+pipeline:
+  chain_implement: true
+```
+
+---
+
+## Final Pipeline Report
+
+```
+╔═══════════════════════════════════════════════════════════════════╗
+║               SPEC KIT AUTOPILOT — PIPELINE COMPLETE             ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  Feature:    {name}                                               ║
+║  Directory:  {path}                                               ║
+║  Pipeline:   {pipeline-id}                                        ║
+║                                                                   ║
+║  Phase 1 — Specify:    ✓ COMPLETE   ({duration})                 ║
+║  Phase 2 — Clarify:    ✓ COMPLETE   ({N} questions auto-answered)║
+║  Phase 3 — Plan:       ✓ COMPLETE   ({N} artifacts)              ║
+║  Phase 4 — Tasks:      ✓ COMPLETE   ({N} tasks)                  ║
+║  Validation:           ✓ PASSED                                  ║
+║                                                                   ║
+║  Test Coverage:                                                   ║
+║    Unit Tests:          {N} tasks (target: ≥80%)                  ║
+║    Integration Tests:   {N} tasks                                ║
+║                                                                   ║
+║  Artifacts:                                                       ║
+║    {spec.md}                                                      ║
+║    {plan.md}                                                      ║
+║    {tasks.md}                                                     ║
+║    {additional artifacts...}                                      ║
+║                                                                   ║
+║  Next Steps:                                                      ║
+║    → /speckit.implement     Execute the task plan                 ║
+║    → /speckit.autopilot.validate  Re-validate test coverage      ║
+║    → /speckit.autopilot.status    View pipeline status anytime   ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## Error Handling
+
+### Phase Failure
+
+1. Update `autopilot-state.json` with `"status": "failed"` and the error message
+2. Report which phase failed, what succeeded before it, and the specific error
+3. Recovery options:
+   - `/speckit.autopilot.run` — Resume from failed phase (state file preserved)
+   - `/speckit.{phase}` — Run the specific failed phase manually
+   - Delete `autopilot-state.json` to restart from scratch
+
+### Partial Failure
+
+If a phase partially completes (e.g., spec written but validation failed):
+- The state file records the partial completion
+- Re-running will detect partial state and retry the phase
+- Artifacts from the partial run are preserved (not deleted)
+
+---
+
+## State File Reference
+
+**Location**: `FEATURE_DIR/autopilot-state.json`
+
+**Full schema**:
+
+```json
+{
+  "pipeline_id": "string — autopilot-YYYYMMDD-HHMMSS",
+  "feature_directory": "string — relative path to feature dir",
+  "started_at": "ISO 8601 timestamp",
+  "last_updated_at": "ISO 8601 timestamp",
+  "phases": {
+    "specify": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "spec_file": "string or null",
+      "clarifications_auto_resolved": "number"
+    },
+    "clarify": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "questions_answered": "number",
+      "categories_addressed": ["string"]
+    },
+    "plan": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "artifacts": ["string"],
+      "test_framework": "string or null"
+    },
+    "tasks": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "total_tasks": "number",
+      "unit_test_tasks": "number",
+      "integration_test_tasks": "number",
+      "validation_passed": "boolean"
+    },
+    "validate": {
+      "status": "pending | running | complete | failed",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "artifacts_valid": "boolean",
+      "test_coverage_valid": "boolean",
+      "warnings": ["string"]
+    }
+  }
+}
+```
