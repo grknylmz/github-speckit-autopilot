@@ -22,6 +22,8 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 - A spec-kit initialized project (`/speckit.constitution` run at least once)
 - An AI agent that supports spec-kit commands (Claude Code, Copilot, Cursor, etc.)
 
+> **GitHub Copilot users**: The spec-kit CLI is not required for Copilot usage — the `.github/` prompt files contain self-contained instructions. However, spec-kit provides stronger validation guarantees.
+
 ## Installation
 
 ### Option 1: Install from GitHub ZIP (Recommended)
@@ -328,3 +330,73 @@ Key design decisions:
 ## License
 
 MIT
+
+---
+
+## GitHub Copilot Support
+
+This repository includes built-in support for GitHub Copilot. No separate installation needed — the files are automatically available when the repo is cloned.
+
+### How It Works
+
+| Mechanism | File | Loaded |
+|-----------|------|--------|
+| **Custom instructions** | `.github/copilot-instructions.md` | Automatically (all Copilot environments) |
+| **Prompt files** | `.github/prompts/*.prompt.md` | Manual attach in Copilot Chat (VS Code only) |
+
+### Setup
+
+**For custom instructions** (all environments): No setup needed. The instructions in `.github/copilot-instructions.md` are automatically loaded when you work in this repository in VS Code, Visual Studio, or github.com.
+
+**For prompt files** (VS Code only):
+
+1. Open VS Code Settings (JSON): `Cmd+Shift+P` → "Open Workspace Settings (JSON)"
+2. Add `"chat.promptFiles": true`
+3. The `.github/prompts/` folder becomes available in Copilot Chat
+
+### Usage
+
+#### Using Custom Instructions
+
+The behavioral rules, three-pillar enforcement, and pipeline conventions are automatically applied to all Copilot Chat interactions. No action needed.
+
+#### Using Prompt Files
+
+1. Open Copilot Chat in VS Code
+2. Click the **Attach context** icon at the bottom of the chat
+3. Click **Prompt...** and choose one of the autopilot prompts
+4. Type your feature description or question
+5. Submit
+
+| Prompt File | Equivalent Command | Purpose |
+|-------------|-------------------|---------|
+| `speckit.autopilot.run` | `/speckit.autopilot.run` | Full pipeline orchestration |
+| `speckit.autopilot.status` | `/speckit.autopilot.status` | Check pipeline progress |
+| `speckit.autopilot.validate` | `/speckit.autopilot.validate` | Validate task coverage (16 checks) |
+| `speckit.autopilot.verify` | `/speckit.autopilot.verify` | Runtime verification + self-heal |
+| `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines |
+
+#### Using with Copilot Coding Agent
+
+When you assign an issue to Copilot, the `copilot-instructions.md` is automatically loaded. Attach the relevant prompt file to provide structured instructions for the task.
+
+### Feature Parity
+
+| Feature | Claude Code | GitHub Copilot |
+|---------|-------------|----------------|
+| Auto-loaded context | extension.yml + commands/ | copilot-instructions.md |
+| Slash commands | `/speckit.autopilot.run` etc. | Prompt files (manual attach) |
+| Script execution | `{SCRIPT}` placeholders | Not supported (file reading fallback) |
+| speckit CLI integration | Full (delegates to core commands) | Self-contained instructions |
+| State file management | Automatic | Copilot follows inline instructions |
+| Resume support | Built-in via state file | Re-attach prompt (state preserved) |
+| Self-heal loop | Automatic loop | Manual re-attach verify prompt |
+| Configuration | autopilot-config.yml | Same file, read by Copilot |
+
+### Limitations
+
+- **No script execution**: Feature directory discovery uses file reading instead of prerequisite scripts
+- **No automatic pipeline orchestration**: Each prompt is attached manually; the full run prompt covers all phases
+- **Self-heal loop requires manual re-invocation**: After fix tasks are generated, re-attach the verify prompt
+- **Prompt files are VS Code only**: The `.github/prompts/` directory is a VS Code Copilot feature
+- **No extension manifest support**: No `requires`, `provides`, or version compatibility checks

@@ -5,6 +5,23 @@ All notable changes to the Spec Kit Autopilot extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-13
+
+### Added
+
+- GitHub Copilot support via `.github/copilot-instructions.md` — auto-loaded behavioral rules and pipeline context for all Copilot environments
+- `.github/prompts/speckit.autopilot.run.prompt.md` — Full pipeline orchestration as a Copilot prompt file
+- `.github/prompts/speckit.autopilot.status.prompt.md` — Pipeline status check as a Copilot prompt file
+- `.github/prompts/speckit.autopilot.validate.prompt.md` — 16-check validation as a Copilot prompt file
+- `.github/prompts/speckit.autopilot.verify.prompt.md` — Runtime verification and self-heal as a Copilot prompt file
+- `.github/prompts/speckit.autopilot.constitution.prompt.md` — Behavioral guidelines merge as a Copilot prompt file
+- README section: "GitHub Copilot Support" with setup instructions, feature parity table, and limitations
+
+### Changed
+
+- Removed `.github/` from `.gitignore` so Copilot files can be committed
+- Prerequisites section updated with note for Copilot users
+
 ## [1.2.0] - 2026-04-13
 
 ### Added
