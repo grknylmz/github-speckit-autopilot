@@ -78,15 +78,48 @@ pipeline:
 
   # Ordered list of phases to execute.
   # Remove phases to skip them. Common configurations:
-  #   Full pipeline:       [specify, clarify, plan, tasks, implement]
+  #   Full pipeline:       [specify, clarify, plan, tasks, implement, verify]
   #   Plan only:           [specify, clarify, plan, tasks]
-  #   Skip clarify:        [specify, plan, tasks, implement]
+  #   Skip clarify:        [specify, plan, tasks, implement, verify]
   #   Only plan + tasks:   [plan, tasks]
   #   Only tasks:          [tasks]
   #   Implement only:      [implement]
+  #   Implement + verify:  [implement, verify]
   phases:
     - specify
     - clarify
     - plan
     - tasks
     - implement
+    - verify
+
+# ─── Verify & Self-Heal ────────────────────────────────────────────
+# Controls runtime verification after implementation.
+# The verify phase starts the application, checks health, and self-heals.
+
+verify:
+  # Enable the verify phase (runtime health checks after implementation)
+  enabled: true
+
+  # Maximum self-heal iterations (verify → diagnose → fix tasks → re-implement → re-verify)
+  # Each iteration generates fix tasks and loops back to implement.
+  # Set to 0 to disable self-healing (verify only, no automatic fixes).
+  max_iterations: 5
+
+  # Seconds to wait for the application to start before declaring failure
+  startup_timeout_seconds: 30
+
+  # Number of times to retry health endpoint checks before declaring failure
+  health_retries: 3
+
+  # Automatically generate fix tasks and loop back to implement when issues found
+  # Set to false to report issues without attempting self-healing
+  auto_heal: true
+
+  # Explicit list of endpoints to verify (overrides auto-detection)
+  # Each entry is a full URL. If empty, endpoints are detected from contracts,
+  # self-validation tasks, and plan.md.
+  # endpoints:
+  #   - "http://localhost:3000/api/health"
+  #   - "http://localhost:3000/api/status"
+  endpoints: []

@@ -171,11 +171,31 @@ If the implement phase has run, verify the test suite passed.
 
 **Skip condition**: Skip this check if the implement phase has not run.
 
+#### Check 15: Verify Runtime Results (Post-Verify)
+
+If the verify phase has run (state shows `verify.status: "complete"` or `"healthy"` or `verify-results.log` exists), verify that all runtime checks passed.
+
+**Pass condition**: `verify-results.log` exists, all endpoint checks show PASS, and no log error patterns were detected. The verify verdict is `healthy`.
+
+**Failure detail**: List which endpoints failed, which log error patterns were found, and the verify verdict.
+
+**Skip condition**: Skip this check if the verify phase has not run (no `verify-results.log` and no verify state in `autopilot-state.json`).
+
+#### Check 16: Self-Heal Iterations (Post-Verify)
+
+If the verify phase ran with self-healing enabled, verify that iterations did not exceed the maximum and the final verdict is healthy.
+
+**Pass condition**: `verify.iterations_used <= verify.max_iterations` and final verdict is `healthy`.
+
+**Failure detail**: Report that maximum iterations were reached with remaining unresolved issues. List the remaining diagnosis entries.
+
+**Skip condition**: Skip this check if `verify.auto_heal` is false or the verify phase has not run.
+
 ### 5. Output Validation Report
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AUTOPILOT VALIDATION (3-Pillar + Post-Implementation)
+AUTOPILOT VALIDATION (3-Pillar + Post-Implementation + Post-Verify)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature: {name}
@@ -205,8 +225,10 @@ Validation Results:
   — Check 12: All tasks complete                     SKIPPED (not implemented yet)
   — Check 13: Self-validation results                SKIPPED (no results log)
   — Check 14: Test suite pass                        SKIPPED (not implemented yet)
+  — Check 15: Verify runtime results                 SKIPPED (verify not run)
+  — Check 16: Self-heal iterations within limit      SKIPPED (verify not run)
 
-  — OR (post-implementation) —
+  — OR (post-implementation, pre-verify) —
 
   ✓ Check 1: Implementation → Unit Test mapping    PASS
   ✓ Check 2: Integration point coverage             PASS
@@ -222,6 +244,8 @@ Validation Results:
   ✓ Check 12: All tasks complete                     PASS (24/24)
   ✓ Check 13: Self-validation results                PASS (6/6)
   ✓ Check 14: Test suite pass                        PASS
+  ✓ Check 15: Verify runtime results                 PASS
+  ✓ Check 16: Self-heal iterations within limit      PASS
 
   — OR (failures) —
 
@@ -243,6 +267,10 @@ Validation Results:
   ✓ Check 13: Self-validation results                PASS (5/5)
   ✗ Check 14: Test suite pass                        FAIL
     3 test failures in integration test suite
+  ✗ Check 15: Verify runtime results                 FAIL
+    GET /api/users returned 500; log error: "TypeError: Cannot read property 'id' of undefined"
+  ✗ Check 16: Self-heal iterations within limit      FAIL
+    Max iterations (5) reached with 2 unresolved issues
 
 Overall: ✓ VALID / ✗ {N} ISSUES FOUND
 
@@ -287,6 +315,10 @@ If validation fails and the user wants to fix:
 13. **Self-validation failures (Check 13)**: Cannot auto-fix. Report which self-validation checks failed with their details. Suggest investigating the implementation for the failing tasks and re-running.
 
 14. **Test suite failures (Check 14)**: Cannot auto-fix. Report the failing tests and suggest investigating the implementation. The user may need to fix the code and re-run tests manually.
+
+15. **Verify failures (Check 15)**: Cannot auto-fix. Report which runtime checks failed with details. Suggest running `/speckit.autopilot.run` with verify phase to trigger self-healing, or investigate manually using the diagnosis in `verify-results.log`.
+
+16. **Self-heal exhaustion (Check 16)**: Cannot auto-fix. Report the remaining issues that could not be resolved within the iteration limit. Suggest manual investigation of the diagnosis entries in the verify state.
 
 After auto-fix, re-run validation to confirm all checks pass.
 

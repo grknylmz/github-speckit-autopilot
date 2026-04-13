@@ -1,5 +1,5 @@
 ---
-description: "Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks with enforced test coverage. Delegates to core commands and applies autopilot-specific post-processing."
+description: "Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks → implement → verify (runtime health + self-heal) → validate. Delegates to core commands and applies autopilot-specific post-processing."
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -48,13 +48,25 @@ This command is an **orchestrator**, not a re-implementation. It:
 │                                            │                     │
 │                                            ▼                     │
 │                                   ┌──────────────┐              │
-│                                   │  IMPLEMENT   │              │
-│                                   │  (core +     │              │
-│                                   │  self-val)   │              │
-│                                   └──────┬───────┘              │
-│                                          │                      │
-│                                          ▼                      │
-│                                  [validate + state.json]        │
+│                                   │  IMPLEMENT   │◀────┐        │
+│                                   │  (core +     │     │        │
+│                                   │  self-val)   │     │        │
+│                                   └──────┬───────┘     │        │
+│                                          │             │        │
+│                                          ▼             │        │
+│                                  ┌──────────────┐     │        │
+│                                  │   VERIFY     │─────┘        │
+│                                  │ (start +     │  (self-heal  │
+│                                  │  health +    │   loop when   │
+│                                  │  diagnose +  │   fix tasks   │
+│                                  │  self-heal)  │   created)    │
+│                                  └──────┬───────┘              │
+│                                         │                       │
+│                                         ▼                       │
+│                                  ┌──────────────┐              │
+│                                  │  VALIDATE    │              │
+│                                  │  (built-in)  │              │
+│                                  └──────────────┘              │
 │                                                                  │
 │  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
 └─────────────────────────────────────────────────────────────────┘
@@ -83,7 +95,7 @@ Before any pipeline phase runs, ensure the project constitution includes autopil
 
 Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge with extension defaults. Key configuration:
 
-- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks", "implement"]`). Users can remove phases to skip them.
+- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks", "implement", "verify"]`). Users can remove phases to skip them.
 - `pipeline.stop_on_failure` — Halt on any phase failure (default: `true`).
 - `clarify.auto_answer` — Auto-answer clarification questions (default: `true`).
 - `clarify.use_recommended` — Use recommended option (default: `true`).
@@ -92,6 +104,11 @@ Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge wi
 - `test_enforcement.integration_tests` — Enforce integration tests (always `true` in autopilot).
 - `self_validation.enabled` — Enforce self-validation tasks (always `true` in autopilot).
 - `self_validation.techniques` — Validation techniques to include (default: `["logging", "smoke", "assertion"]`).
+- `verify.max_iterations` — Maximum self-heal loops (default: `5`).
+- `verify.startup_timeout_seconds` — Seconds to wait for app startup (default: `30`).
+- `verify.health_retries` — Health endpoint check retries (default: `3`).
+- `verify.auto_heal` — Generate fix tasks and loop back on failure (default: `true`).
+- `verify.endpoints` — Explicit endpoints to verify (default: `[]`, auto-detected).
 
 ### 0.2 Detect or Create Feature Directory
 
@@ -118,6 +135,7 @@ If `FEATURE_DIR/autopilot-state.json` exists, read it and determine which phases
     "plan":     { "status": "failed",   "error": "..." },
     "tasks":    { "status": "pending" },
     "implement":{ "status": "pending" },
+    "verify":   { "status": "pending" },
     "validate": { "status": "pending" }
   },
   "started_at": "...",
@@ -129,6 +147,7 @@ If `FEATURE_DIR/autopilot-state.json` exists, read it and determine which phases
 - Phase with `status: "complete"` → Skip
 - Phase with `status: "failed"` → Retry (if `pipeline.stop_on_failure` is true, ask user first)
 - Phase with `status: "pending"` or missing → Execute
+- `verify.status: "healing"` → Re-trigger implement phase, then re-verify (self-heal loop)
 - If all phases are `complete` → Run validation and report
 
 If no state file exists, fall back to artifact detection:
@@ -152,6 +171,7 @@ Create or update `FEATURE_DIR/autopilot-state.json`:
     "plan":      { "status": "pending" },
     "tasks":     { "status": "pending" },
     "implement": { "status": "pending" },
+    "verify":    { "status": "pending" },
     "validate":  { "status": "pending" }
   },
   "started_at": "<ISO-timestamp>",
@@ -587,7 +607,7 @@ Run the `/speckit.implement` command workflow. **Follow the core command's instr
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AUTOMATION PHASE 5/6: IMPLEMENT (Core + Self-Validation) ✓
+AUTOMATION PHASE 5/7: IMPLEMENT (Core + Self-Validation) ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tasks Completed:  {N} / {N}
 Test Suite:       {✓ PASSED / ✗ FAILED}
@@ -600,11 +620,102 @@ Results Log:      {path}
 
 ---
 
-## Step 6: VALIDATE (Built-In)
+## Step 6: VERIFY (Delegate + Self-Heal Loop)
+
+**Skip if** `verify` is not in `pipeline.phases` or state shows `complete`.
+
+**Prerequisite**: The implement phase must have status `complete` before verify runs.
+
+### 6.1 Loop Controller
+
+The verify phase may execute multiple times (each time followed by a re-implementation of fix tasks). The loop is controlled by:
+
+- `verify.max_iterations` from config (default: 5)
+- Current iteration tracked in `autopilot-state.json` under `verify.iteration`
+
+On first entry, iteration is 0. Each self-heal cycle increments it by 1.
+
+If `verify.iteration >= verify.max_iterations`:
+- Report: "Maximum verify iterations ({N}) reached. Remaining issues require manual investigation."
+- Set `verify.status: "failed"` and continue to validate phase.
+- If `pipeline.stop_on_failure` is true, halt the pipeline.
+
+### 6.2 Execute Verify Command
+
+Run the `/speckit.autopilot.verify` command workflow. **Follow its instructions exactly** for:
+
+- Stopping any previous instance
+- Detecting startup commands
+- Starting the application
+- Running health checks (logs, endpoints, process)
+- Evaluating results
+- Diagnosing issues
+- Generating fix tasks (self-heal)
+
+### 6.3 Self-Heal Decision
+
+**If verify verdict is `healthy`**:
+- Verify command has already cleaned up (stopped the app).
+- Proceed to Step 7 (Validate).
+
+**If verify verdict is `failed`, `degraded`, or `startup_failed`**:
+- The verify command has generated fix tasks in `tasks.md`.
+- Check: `verify.iteration < verify.max_iterations` AND `verify.auto_heal` is `true`.
+- If both conditions met:
+  1. Set `implement.status: "pending"` in state (to allow re-execution).
+  2. Set `implement.tasks_completed` to the count of tasks completed BEFORE the fix tasks.
+  3. Increment `verify.iteration`.
+  4. Return to Step 5 (IMPLEMENT) — the core implement command will detect the new unchecked fix tasks and execute them.
+- If conditions not met:
+  - Set `verify.status: "failed"`.
+  - Continue to Step 7 (Validate) which will report the failures.
+
+### 6.4 Update State
+
+```json
+"verify": {
+  "status": "pending | running | healthy | degraded | failed | healing | complete",
+  "iteration": N,
+  "max_iterations": N,
+  "verdict": "healthy | degraded | failed | startup_failed",
+  "completed_at": "<ISO-timestamp> or null",
+  "error": "string or null",
+  "checks": {
+    "startup": { "status": "pass|fail", "command": "...", "ready_after_seconds": N },
+    "log_analysis": { "errors": N, "warnings": N, "error_patterns": ["..."] },
+    "endpoints": [{ "url": "...", "method": "GET", "status": 200, "result": "pass|warn|fail" }],
+    "process": { "running": true }
+  },
+  "diagnosis": [{ "issue": "...", "severity": "critical|major|minor", "root_cause": "...", "related_task": "T{NNN}", "suggested_fix": "..." }],
+  "fix_tasks_created_total": N,
+  "iterations_used": N,
+  "results_log": "<path>"
+}
+```
+
+### 6.5 Report
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AUTOMATION PHASE 6/7: VERIFY (Runtime Health + Self-Heal) ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Verdict:           {HEALTHY / DEGRADED / FAILED}
+Iteration:         {N} / {max}
+Startup:           {command} ({ready/failed in} {seconds}s)
+Endpoints Checked: {N} ({N} passed)
+Log Errors:        {N}
+Self-Heal:         {N} fix tasks generated, {N} iterations used
+Results Log:       {path}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Step 7: VALIDATE (Built-In)
 
 After all pipeline phases complete, run a final validation.
 
-### 6.1 Validate Artifacts Exist
+### 7.1 Validate Artifacts Exist
 
 | Artifact | Required | Phase |
 |----------|----------|-------|
@@ -618,7 +729,7 @@ Optional artifacts (warn if expected but missing):
 - `research.md` — Expected if plan had NEEDS CLARIFICATION items
 - `checklists/requirements.md` — Expected after specify
 
-### 6.2 Validate Test Coverage and Self-Validation in Tasks
+### 7.2 Validate Test Coverage and Self-Validation in Tasks
 
 Re-run the validation from Step 4.4 and confirm:
 - Unit test tasks exist for implementation tasks
@@ -627,7 +738,7 @@ Re-run the validation from Step 4.4 and confirm:
 - No implementation task is missing its corresponding test or self-validation
 - Every self-validation task specifies a technique and success criteria
 
-### 6.3 Validate Implementation Results (if implement phase ran)
+### 7.3 Validate Implementation Results (if implement phase ran)
 
 If the implement phase completed (state shows `implement.status: "complete"`):
 - All tasks in `tasks.md` are marked `[X]` or `[x]`
@@ -635,7 +746,7 @@ If the implement phase completed (state shows `implement.status: "complete"`):
 - Test suite passed
 - No remaining `- [ ] T{NNN}` tasks
 
-### 6.4 Update State
+### 7.4 Update State
 
 ```json
 "validate": {
@@ -665,6 +776,7 @@ If the implement phase completed (state shows `implement.status: "complete"`):
 ║  Phase 3 — Plan:       ✓ COMPLETE   ({N} artifacts)              ║
 ║  Phase 4 — Tasks:      ✓ COMPLETE   ({N} tasks)                  ║
 ║  Phase 5 — Implement:  ✓ COMPLETE   ({N}/{N} tasks, {N} passed)  ║
+║  Phase 6 — Verify:     ✓ HEALTHY    ({N} iterations, {N} checks) ║
 ║  Validation:           ✓ PASSED                                  ║
 ║                                                                   ║
 ║  Test Coverage:                                                   ║
@@ -762,6 +874,35 @@ If a phase partially completes (e.g., spec written but validation failed):
       "tests_passed": "boolean",
       "self_validation_passed": "boolean",
       "validation_results_path": "string or null"
+    },
+    "verify": {
+      "status": "pending | running | healthy | degraded | failed | healing | complete",
+      "iteration": "number",
+      "max_iterations": "number",
+      "verdict": "healthy | degraded | failed | startup_failed or null",
+      "completed_at": "ISO 8601 or null",
+      "error": "string or null",
+      "checks": {
+        "startup": { "status": "pass|fail", "command": "string", "ready_after_seconds": "number or null" },
+        "log_analysis": { "errors": "number", "warnings": "number", "error_patterns": ["string"] },
+        "endpoints": [
+          { "url": "string", "method": "string", "expected_status": "number", "actual_status": "number", "response_time_ms": "number", "result": "pass|warn|fail" }
+        ],
+        "process": { "running": "boolean" }
+      },
+      "diagnosis": [
+        {
+          "issue": "string",
+          "severity": "critical|major|minor",
+          "affected": "string",
+          "root_cause": "string",
+          "related_task": "string",
+          "suggested_fix": "string"
+        }
+      ],
+      "fix_tasks_created_total": "number",
+      "iterations_used": "number",
+      "results_log": "string or null"
     },
     "validate": {
       "status": "pending | running | complete | failed",

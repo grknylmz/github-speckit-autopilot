@@ -5,6 +5,32 @@ All notable changes to the Spec Kit Autopilot extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-13
+
+### Added
+
+- `speckit.autopilot.verify` command — Starts the built application, captures logs, hits HTTP endpoints, runs health checks, and validates everything is running
+- Step 6 (VERIFY) in run command: runtime verification with self-healing loop (verify → diagnose → fix → re-implement → re-verify)
+- Self-healing loop: diagnose issues, generate fix tasks in tasks.md, re-implement, and re-verify (configurable max iterations, default: 5)
+- Startup command detection from quickstart.md, plan.md, project conventions, and self-validation tasks
+- HTTP endpoint verification using contracts, self-validation tasks, and explicit configuration
+- Log analysis with error pattern detection (ERROR, FATAL, stack traces, connection failures)
+- Structured diagnosis correlating runtime errors to implementation tasks
+- Fix task generation in new "Verify Fix Tasks" sections in tasks.md
+- Verify state tracking in autopilot-state.json (iteration count, verdict, check results, diagnosis)
+- `verify-results.log` artifact with detailed check results
+- New configuration section: `verify` with max_iterations, startup_timeout_seconds, health_retries, auto_heal, endpoints
+- Post-verify validation checks (15-16): verify runtime results, self-heal iterations within limit
+- Status command updated to show verify phase, self-healing results, and verify-related recommendations
+
+### Changed
+
+- Default pipeline phases now include `verify`: `[specify, clarify, plan, tasks, implement, verify]`
+- Validate step renumbered from Step 6 to Step 7 to accommodate new verify step
+- Architecture diagram updated to include VERIFY phase with loop-back arrow to IMPLEMENT
+- Final pipeline report includes verify phase results
+- Validation report now shows 16 checks (11 pre-implementation + 3 post-implementation + 2 post-verify)
+
 ## [1.1.0] - 2026-04-12
 
 ### Added

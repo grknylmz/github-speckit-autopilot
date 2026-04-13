@@ -9,6 +9,8 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 - **Auto-answered clarifications**: All specification questions answered using best-practice recommendations
 - **Enforced test coverage**: Every generated task includes unit tests and integration tests with post-generation validation
 - **Self-validating tasks**: Every feature includes a runnable check the autopilot executes to confirm it works (logging, smoke tests, assertions, health checks, etc.)
+- **Runtime verification**: Starts the built application, checks logs, hits HTTP endpoints, and validates everything is running
+- **Self-healing loop**: When issues are found, generates fix tasks and loops back to implementation automatically (configurable max iterations)
 - **Pipeline state file**: `autopilot-state.json` tracks exact phase status for reliable resume and status checks
 - **Configurable phases**: Skip phases, reorder them, or run a subset of the pipeline
 - **Validation command**: `/speckit.autopilot.validate` verifies test coverage, self-validation, and behavioral guideline compliance with auto-fix
@@ -84,7 +86,8 @@ This orchestrates:
 3. **Plan** — Delegates to `/speckit.plan` for research, data model, contracts
 4. **Tasks** — Delegates to `/speckit.tasks` with 3-pillar enforcement: unit tests, integration tests, and self-validation (all mandatory)
 5. **Implement** — Delegates to `/speckit.implement` to execute all tasks, then runs self-validation checks and logs results
-6. **Validate** — Built-in validation confirms all implementation tasks have tests + self-validation (and post-implementation verification)
+6. **Verify** — Starts the application, runs health checks (logs, HTTP endpoints, process health), diagnoses issues, and self-heals by generating fix tasks and looping back to implement
+7. **Validate** — Built-in validation confirms all implementation tasks have tests + self-validation (and post-implementation + post-verify verification)
 
 ### Check Pipeline Status
 
@@ -100,7 +103,7 @@ Reads the pipeline state file and scans artifacts. Shows which phases are comple
 /speckit.autopilot.validate
 ```
 
-Runs 14 validation checks on `tasks.md` (11 pre-implementation + 3 post-implementation):
+Runs 16 validation checks on `tasks.md` (11 pre-implementation + 3 post-implementation + 2 post-verify):
 1. Implementation tasks have unit tests
 2. Integration points have integration tests
 3. TDD ordering (tests before implementation)
@@ -117,6 +120,10 @@ Post-implementation checks:
 12. All tasks marked complete (no remaining `- [ ]` tasks)
 13. Self-validation results (all checks in validation-results.log passed)
 14. Test suite pass (all tests passed after implementation)
+
+Post-verify checks:
+15. Verify runtime results (all endpoint checks passed, no log errors)
+16. Self-heal iterations within limit (verify resolved all issues within max iterations)
 
 Offers auto-fix for any issues found.
 
@@ -150,15 +157,17 @@ pipeline:
     - plan
     - tasks
     - implement
+    - verify
 ```
 
 Common configurations:
-- **Full pipeline**: `[specify, clarify, plan, tasks, implement]`
+- **Full pipeline with verify**: `[specify, clarify, plan, tasks, implement, verify]`
 - **Plan only (no execute)**: `[specify, clarify, plan, tasks]`
-- **Skip clarify**: `[specify, plan, tasks, implement]`
+- **Skip clarify**: `[specify, plan, tasks, implement, verify]`
 - **Re-plan only**: `[plan, tasks]`
 - **Tasks only**: `[tasks]`
 - **Implement only**: `[implement]`
+- **Implement and verify**: `[implement, verify]`
 
 ### All Settings
 
@@ -174,8 +183,14 @@ Common configurations:
 | `clarify.auto_answer` | `true` | Auto-answer clarification questions |
 | `clarify.use_recommended` | `true` | Use AI-recommended option |
 | `clarify.max_auto_questions` | `5` | Max questions to auto-answer |
-| `pipeline.phases` | `[specify, clarify, plan, tasks, implement]` | Phases to execute |
+| `pipeline.phases` | `[specify, clarify, plan, tasks, implement, verify]` | Phases to execute |
 | `pipeline.stop_on_failure` | `true` | Stop on any phase failure |
+| `verify.enabled` | `true` | Enable runtime verification phase |
+| `verify.max_iterations` | `5` | Maximum self-heal loops |
+| `verify.startup_timeout_seconds` | `30` | App startup timeout |
+| `verify.health_retries` | `3` | Health check retry count |
+| `verify.auto_heal` | `true` | Auto-generate fix tasks on failure |
+| `verify.endpoints` | `[]` | Explicit endpoints to verify |
 
 ## Self-Validation
 
@@ -264,13 +279,25 @@ This appends the guidelines to `.specify/constitution.md` (idempotent — safe t
 │                                            │                     │
 │                                            ▼                     │
 │                                   ┌──────────────┐              │
-│                                   │  IMPLEMENT   │              │
-│                                   │  (core +     │              │
-│                                   │  self-val)   │              │
-│                                   └──────┬───────┘              │
-│                                          │                      │
-│                                          ▼                      │
-│                                  [validate + state.json]        │
+│                                   │  IMPLEMENT   │◀────┐        │
+│                                   │  (core +     │     │        │
+│                                   │  self-val)   │     │        │
+│                                   └──────┬───────┘     │        │
+│                                          │             │        │
+│                                          ▼             │        │
+│                                  ┌──────────────┐     │        │
+│                                  │   VERIFY     │─────┘        │
+│                                  │ (start +     │  (self-heal  │
+│                                  │  health +    │   loop when   │
+│                                  │  diagnose +  │   fix tasks   │
+│                                  │  self-heal)  │   created)    │
+│                                  └──────┬───────┘              │
+│                                         │                       │
+│                                         ▼                       │
+│                                  ┌──────────────┐              │
+│                                  │  VALIDATE    │              │
+│                                  │  (built-in)  │              │
+│                                  └──────────────┘              │
 │                                                                  │
 │  Pipeline State File: FEATURE_DIR/autopilot-state.json           │
 └─────────────────────────────────────────────────────────────────┘
@@ -290,6 +317,7 @@ Key design decisions:
 | `/speckit.autopilot.start` | Alias for `run` |
 | `/speckit.autopilot.status` | Check pipeline progress |
 | `/speckit.autopilot.validate` | Validate test coverage, self-validation, and behavioral compliance |
+| `/speckit.autopilot.verify` | Runtime verification: start app, check health, diagnose issues, self-heal |
 | `/speckit.autopilot.constitution` | Merge behavioral guidelines into project constitution |
 
 ## Requirements

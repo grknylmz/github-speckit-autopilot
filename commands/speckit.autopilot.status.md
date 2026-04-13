@@ -48,6 +48,7 @@ Scan the feature directory for artifacts and infer phase status:
 | `plan.md` exists | Specify + Clarify + Plan done |
 | `tasks.md` exists, some tasks `- [ ]` | Tasks done, implement not started |
 | `tasks.md` exists, all tasks `- [X]` or `- [x]` | Tasks + Implement done |
+| `verify-results.log` exists | Verify done |
 
 ### 3. Scan Artifacts
 
@@ -65,6 +66,7 @@ Regardless of state file presence, scan the feature directory for these artifact
 | Quickstart | `quickstart.md` | Plan |
 | Tasks | `tasks.md` | Tasks |
 | Validation Results | `validation-results.log` | Implement |
+| Verify Results | `verify-results.log` | Verify |
 | Validation State | `autopilot-state.json` | Validate |
 
 ### 4. Parse Task Details (if tasks.md exists)
@@ -110,7 +112,8 @@ Progress:   {percentage}%
 │ 3. Plan          │ ✓ COMPLETE   │ 3 artifacts generated         │
 │ 4. Tasks         │ ✓ COMPLETE   │ 24 tasks (6 tests)            │
 │ 5. Implement     │ ✓ COMPLETE   │ 24/24 tasks, 6/6 self-val     │
-│ 6. Validate      │ ✓ PASSED     │ All checks pass               │
+│ 6. Verify        │ ✓ HEALTHY    │ 2 iterations, 5/5 endpoints   │
+│ 7. Validate      │ ✓ PASSED     │ All checks pass               │
 └─────────────────────────────────────────────────────────────────┘
 
   — OR (if incomplete) —
@@ -123,7 +126,8 @@ Progress:   {percentage}%
 │ 3. Plan          │ ◌ PENDING    │ Not started                   │
 │ 4. Tasks         │ ◌ PENDING    │ Not started                   │
 │ 5. Implement     │ ◌ PENDING    │ Not started                   │
-│ 6. Validate      │ ◌ PENDING    │ Not started                   │
+│ 6. Verify        │ ◌ PENDING    │ Not started                   │
+│ 7. Validate      │ ◌ PENDING    │ Not started                   │
 └─────────────────────────────────────────────────────────────────┘
 
 Artifacts:
@@ -155,6 +159,13 @@ Self-Validation Results (if implement ran):
   Failed:                 {N}
   Results log:            {path or "not run"}
 
+Verify & Self-Healing Results (if verify ran):
+  Verdict:              {HEALTHY / DEGRADED / FAILED}
+  Iterations:           {N} / {max}
+  Endpoints checked:    {N} ({N} passed)
+  Fix tasks generated:  {N}
+  Results log:          {path or "not run"}
+
 Next Step: {recommended command}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -171,6 +182,8 @@ Based on the current state, suggest the next action:
 | Specify + Clarify done | `/speckit.autopilot.run` (resumes from plan) |
 | Tasks done, implement not started | `/speckit.autopilot.run` (resumes from implement) |
 | Implement in progress | `/speckit.autopilot.run` (resumes from failed task) |
+| Verify failed, iterations remain | `/speckit.autopilot.run` (resumes verify self-heal loop) |
+| Verify failed, max iterations reached | Manual investigation needed; check verify-results.log |
 | All phases done, tasks complete | `/speckit.analyze` |
 | Validation not run | `/speckit.autopilot.validate` |
 | Validation failed | `/speckit.autopilot.validate` (auto-fix) |

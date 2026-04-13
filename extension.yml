@@ -3,8 +3,8 @@ schema_version: "1.0"
 extension:
   id: "autopilot"
   name: "Spec Kit Autopilot"
-  version: "1.0.0"
-  description: "Automated pipeline orchestrating specify, clarify, plan, tasks, and implement with auto-answered clarifications, enforced test coverage, and self-validating tasks"
+  version: "1.2.0"
+  description: "Automated pipeline orchestrating specify, clarify, plan, tasks, implement, and verify with auto-answered clarifications, enforced test coverage, self-validating tasks, runtime health checks, and self-healing"
   author: "Gurkan Yilmaz"
   repository: "https://github.com/grknylmz/github-speckit-autopilot"
   license: "MIT"
@@ -33,6 +33,10 @@ provides:
     - name: "speckit.autopilot.validate"
       file: "commands/speckit.autopilot.validate.md"
       description: "Validate that generated tasks have proper unit tests, integration tests, self-validation, and follow behavioral guidelines"
+
+    - name: "speckit.autopilot.verify"
+      file: "commands/speckit.autopilot.verify.md"
+      description: "Verify the built application by starting it, checking logs, hitting endpoints, diagnosing issues, and self-healing with fix tasks"
 
     - name: "speckit.autopilot.constitution"
       file: "commands/speckit.autopilot.constitution.md"
@@ -85,3 +89,10 @@ defaults:
       - plan
       - tasks
       - implement
+      - verify
+  verify:
+    max_iterations: 5
+    startup_timeout_seconds: 30
+    health_retries: 3
+    auto_heal: true
+    endpoints: []
