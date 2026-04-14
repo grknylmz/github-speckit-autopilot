@@ -1,5 +1,5 @@
 ---
-description: "Bootstrap GitHub Copilot support by copying the extension's Copilot instruction and prompt files into the project root .github directory."
+description: "Bootstrap GitHub Copilot support by copying the extension's Copilot instruction, prompt, and custom agent files into the project root .github directory."
 ---
 
 # Bootstrap GitHub Copilot Support
@@ -44,6 +44,8 @@ Required source files:
 - `.specify/extensions/autopilot/.github/prompts/speckit.autopilot.verify.prompt.md`
 - `.specify/extensions/autopilot/.github/prompts/speckit.autopilot.constitution.prompt.md`
 - `.specify/extensions/autopilot/.github/prompts/speckit.autopilot.bootstrap-copilot.prompt.md`
+- `.specify/extensions/autopilot/.github/agents/speckit-autopilot.agent.md`
+- `.specify/extensions/autopilot/.github/agents/speckit-autopilot-bootstrap.agent.md`
 
 If any are missing, report which ones are missing and stop.
 
@@ -53,6 +55,7 @@ Ensure these directories exist at the project root:
 
 - `.github/`
 - `.github/prompts/`
+- `.github/agents/`
 
 Then copy the autopilot-managed files into the project root:
 
@@ -63,6 +66,8 @@ Then copy the autopilot-managed files into the project root:
 - `.github/prompts/speckit.autopilot.verify.prompt.md`
 - `.github/prompts/speckit.autopilot.constitution.prompt.md`
 - `.github/prompts/speckit.autopilot.bootstrap-copilot.prompt.md`
+- `.github/agents/speckit-autopilot.agent.md`
+- `.github/agents/speckit-autopilot-bootstrap.agent.md`
 
 Rules:
 
@@ -97,10 +102,12 @@ Copied Files:
   ✓ .github/prompts/speckit.autopilot.verify.prompt.md
   ✓ .github/prompts/speckit.autopilot.constitution.prompt.md
   ✓ .github/prompts/speckit.autopilot.bootstrap-copilot.prompt.md
+  ✓ .github/agents/speckit-autopilot.agent.md
+  ✓ .github/agents/speckit-autopilot-bootstrap.agent.md
 
 Next:
   1. Enable `chat.promptFiles` in VS Code if needed
-  2. Open Copilot Chat and attach an autopilot prompt
+  2. Open Copilot Chat and choose an autopilot custom agent or attach an autopilot prompt
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

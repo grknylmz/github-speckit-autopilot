@@ -11,9 +11,10 @@ if [ ! -d "$source_dir" ]; then
   exit 1
 fi
 
-mkdir -p "$target_dir/prompts"
+mkdir -p "$target_dir/prompts" "$target_dir/agents"
 
 cp "$source_dir/copilot-instructions.md" "$target_dir/copilot-instructions.md"
 cp "$source_dir/prompts/"*.prompt.md "$target_dir/prompts/"
+cp "$source_dir/agents/"*.agent.md "$target_dir/agents/"
 
 echo "Copied Copilot files to $target_dir"

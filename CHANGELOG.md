@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - New `/speckit.autopilot.bootstrap-copilot` command and matching Copilot prompt wrapper to copy autopilot-managed Copilot files into the project root `.github/` directory after extension installation
+- Added `.github/agents/` custom agent files for autopilot workflow execution and Copilot bootstrap setup
+
+### Fixed
+
+- The Copilot bootstrap and sync flows now copy `.github/agents/*.agent.md` files in addition to `copilot-instructions.md` and prompt files
 
 ## [1.3.0] - 2026-04-13
 

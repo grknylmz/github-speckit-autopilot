@@ -83,6 +83,7 @@ Then verify:
 ```bash
 ls .github/copilot-instructions.md
 ls .github/prompts/speckit.autopilot.*.prompt.md
+ls .github/agents/*.agent.md
 
 # Should show:
 # .github/copilot-instructions.md
@@ -92,6 +93,8 @@ ls .github/prompts/speckit.autopilot.*.prompt.md
 # .github/prompts/speckit.autopilot.verify.prompt.md
 # .github/prompts/speckit.autopilot.constitution.prompt.md
 # .github/prompts/speckit.autopilot.bootstrap-copilot.prompt.md
+# .github/agents/speckit-autopilot.agent.md
+# .github/agents/speckit-autopilot-bootstrap.agent.md
 ```
 
 ### Uninstall
@@ -372,6 +375,7 @@ This repository includes built-in support for GitHub Copilot. If you clone the r
 | ----------------------- | --------------------------------- | -------------------------------------------- |
 | **Custom instructions** | `.github/copilot-instructions.md` | Automatically (all Copilot environments)     |
 | **Prompt files**        | `.github/prompts/*.prompt.md`     | Manual attach in Copilot Chat (VS Code only) |
+| **Custom agents**       | `.github/agents/*.agent.md`       | Agent picker and agent-mode workflows        |
 
 ### Setup
 
@@ -383,6 +387,8 @@ This repository includes built-in support for GitHub Copilot. If you clone the r
 2. Open VS Code Settings (JSON): `Cmd+Shift+P` → "Open Workspace Settings (JSON)"
 3. Add `"chat.promptFiles": true`
 4. The `.github/prompts/` folder becomes available in Copilot Chat
+
+**For custom agents** (VS Code Copilot agent mode): After bootstrap or sync, the `.github/agents/` folder contains autopilot-specific custom agents that can be selected from the agent picker.
 
 ### Usage
 
@@ -406,6 +412,15 @@ The behavioral rules, three-pillar enforcement, and pipeline conventions are aut
 | `speckit.autopilot.verify`       | `/speckit.autopilot.verify`       | Runtime verification + self-heal                                  |
 | `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines                                       |
 | `speckit.autopilot.bootstrap-copilot` | `/speckit.autopilot.bootstrap-copilot` | Copy Copilot files into the project root `.github/`               |
+
+#### Using Custom Agents
+
+After bootstrap, these custom agents are available from `.github/agents/`:
+
+| Agent File | Purpose |
+| ---------- | ------- |
+| `speckit-autopilot.agent.md` | Run the autopilot workflows by reading the authoritative files in `commands/` |
+| `speckit-autopilot-bootstrap.agent.md` | Set up project-root Copilot instruction, prompt, and agent files |
 
 #### Using with Copilot Coding Agent
 
@@ -432,4 +447,4 @@ When you assign an issue to Copilot, the `copilot-instructions.md` is automatica
 - **Prompt files are VS Code only**: The `.github/prompts/` directory is a VS Code Copilot feature
 - **No extension manifest support**: No `requires`, `provides`, or version compatibility checks
 
-For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations. After a `specify extension add` install, sync those files from `.specify/extensions/autopilot/.github/` into the project root before using Copilot prompt entrypoints.
+For all autopilot prompts and custom agents, Copilot should follow the matching workflow defined in `commands/` and the autopilot-managed files under `.github/`, rather than relying on separate inline implementations. After a `specify extension add` install, sync those files from `.specify/extensions/autopilot/.github/` into the project root before using prompt entrypoints or custom agents.
