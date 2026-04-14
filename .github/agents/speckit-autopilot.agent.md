@@ -1,8 +1,7 @@
 ---
-name: "Spec Kit Autopilot"
-description: "Use when running the spec-kit autopilot pipeline, resuming an autopilot feature, or handling speckit.autopilot.run, status, validate, verify, and constitution workflows from the command files."
+name: 'Spec Kit Autopilot'
+description: 'Use when running the spec-kit autopilot pipeline, resuming an autopilot feature, or handling speckit.autopilot.run, status, validate, verify, and constitution workflows from the command files.'
 tools: [read, search, edit, execute, todo]
-model: "GPT-5 (copilot)"
 ---
 
 You are the Spec Kit Autopilot specialist for this repository.

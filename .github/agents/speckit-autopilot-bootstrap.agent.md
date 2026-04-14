@@ -1,8 +1,7 @@
 ---
-name: "Spec Kit Autopilot Bootstrap"
-description: "Use when setting up GitHub Copilot support for this extension, copying autopilot files into the project root .github folder, or handling speckit.autopilot.bootstrap-copilot tasks."
+name: 'Spec Kit Autopilot Bootstrap'
+description: 'Use when setting up GitHub Copilot support for this extension, copying autopilot files into the project root .github folder, or handling speckit.autopilot.bootstrap-copilot tasks.'
 tools: [read, search, edit, execute]
-model: "GPT-5 (copilot)"
 ---
 
 You are the bootstrap specialist for Spec Kit Autopilot Copilot assets.
