@@ -53,7 +53,7 @@ specify extension list
 # Should show:
 #  ✓ Spec Kit Autopilot (v1.3.0)
 #     Automated pipeline orchestrating specify, clarify, plan, tasks, implement, verify, and validate
-#     Commands: 5 | Hooks: 0 | Status: Enabled
+#     Commands: 6 | Hooks: 0 | Status: Enabled
 ```
 
 ### Confirm Commands Are Registered
@@ -67,11 +67,18 @@ ls .claude/commands/speckit.autopilot.*
 # speckit.autopilot.validate.md
 # speckit.autopilot.verify.md
 # speckit.autopilot.constitution.md
+# speckit.autopilot.bootstrap-copilot.md
 ```
 
 ### Confirm Copilot Files Are Installed
 
-If you use GitHub Copilot in VS Code, the extension install should also materialize the Copilot files in `.github/`:
+If you use GitHub Copilot in VS Code, `specify extension add` installs the extension under `.specify/extensions/autopilot/`. To make the Copilot files available at the project root, either run `/speckit.autopilot.bootstrap-copilot` in a supported agent or run:
+
+```bash
+./.specify/extensions/autopilot/scripts/sync-copilot-files.sh
+```
+
+Then verify:
 
 ```bash
 ls .github/copilot-instructions.md
@@ -84,6 +91,7 @@ ls .github/prompts/speckit.autopilot.*.prompt.md
 # .github/prompts/speckit.autopilot.validate.prompt.md
 # .github/prompts/speckit.autopilot.verify.prompt.md
 # .github/prompts/speckit.autopilot.constitution.prompt.md
+# .github/prompts/speckit.autopilot.bootstrap-copilot.prompt.md
 ```
 
 ### Uninstall
@@ -341,6 +349,7 @@ Key design decisions:
 | `/speckit.autopilot.validate`     | Validate test coverage, self-validation, and behavioral compliance        |
 | `/speckit.autopilot.verify`       | Runtime verification: start app, check health, diagnose issues, self-heal |
 | `/speckit.autopilot.constitution` | Merge behavioral guidelines into project constitution                     |
+| `/speckit.autopilot.bootstrap-copilot` | Copy Copilot instruction and prompt files into the project root `.github/` |
 
 ## Requirements
 
@@ -355,7 +364,7 @@ MIT
 
 ## GitHub Copilot Support
 
-This repository includes built-in support for GitHub Copilot. No separate installation needed — the files are automatically available when the repo is cloned.
+This repository includes built-in support for GitHub Copilot. If you clone the repository directly, the files are already present. If you install via `specify extension add`, run `/speckit.autopilot.bootstrap-copilot` in a supported agent or use the sync script to copy the Copilot files from `.specify/extensions/autopilot/.github/` into the project root `.github/`.
 
 ### How It Works
 
@@ -366,13 +375,14 @@ This repository includes built-in support for GitHub Copilot. No separate instal
 
 ### Setup
 
-**For custom instructions** (all environments): No setup needed. The instructions in `.github/copilot-instructions.md` are automatically loaded when you work in this repository in VS Code, Visual Studio, or github.com.
+**For custom instructions** (all environments): If you cloned this repository directly, no setup is needed. If you installed via `specify extension add`, first run `/speckit.autopilot.bootstrap-copilot` in a supported agent or `./.specify/extensions/autopilot/scripts/sync-copilot-files.sh`. After that, `.github/copilot-instructions.md` is automatically loaded when you work in the repository in VS Code, Visual Studio, or github.com.
 
 **For prompt files** (VS Code only):
 
-1. Open VS Code Settings (JSON): `Cmd+Shift+P` → "Open Workspace Settings (JSON)"
-2. Add `"chat.promptFiles": true`
-3. The `.github/prompts/` folder becomes available in Copilot Chat
+1. If you installed via `specify extension add`, run `/speckit.autopilot.bootstrap-copilot` in a supported agent or `./.specify/extensions/autopilot/scripts/sync-copilot-files.sh`
+2. Open VS Code Settings (JSON): `Cmd+Shift+P` → "Open Workspace Settings (JSON)"
+3. Add `"chat.promptFiles": true`
+4. The `.github/prompts/` folder becomes available in Copilot Chat
 
 ### Usage
 
@@ -395,6 +405,7 @@ The behavioral rules, three-pillar enforcement, and pipeline conventions are aut
 | `speckit.autopilot.validate`     | `/speckit.autopilot.validate`     | Validate task coverage (16 checks)                                |
 | `speckit.autopilot.verify`       | `/speckit.autopilot.verify`       | Runtime verification + self-heal                                  |
 | `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines                                       |
+| `speckit.autopilot.bootstrap-copilot` | `/speckit.autopilot.bootstrap-copilot` | Copy Copilot files into the project root `.github/`               |
 
 #### Using with Copilot Coding Agent
 
@@ -421,4 +432,4 @@ When you assign an issue to Copilot, the `copilot-instructions.md` is automatica
 - **Prompt files are VS Code only**: The `.github/prompts/` directory is a VS Code Copilot feature
 - **No extension manifest support**: No `requires`, `provides`, or version compatibility checks
 
-For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations. If those files are missing after install, the extension package is incomplete and Copilot prompt entrypoints will not be available.
+For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations. After a `specify extension add` install, sync those files from `.specify/extensions/autopilot/.github/` into the project root before using Copilot prompt entrypoints.

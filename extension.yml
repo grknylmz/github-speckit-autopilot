@@ -40,6 +40,10 @@ provides:
       file: 'commands/speckit.autopilot.constitution.md'
       description: 'Merge autopilot behavioral guidelines (think-before-code, simplicity, surgical changes, goal-driven) into the project constitution'
 
+    - name: 'speckit.autopilot.bootstrap-copilot'
+      file: 'commands/speckit.autopilot.bootstrap-copilot.md'
+      description: "Copy the extension's Copilot instruction and prompt files into the project root .github directory"
+
   config:
     - name: 'autopilot-config.yml'
       template: 'config-template.yml'

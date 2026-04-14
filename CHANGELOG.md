@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Extension packaging now includes the `.github/` Copilot instruction and prompt files so installs materialize the expected Copilot entrypoints
+- Added `scripts/sync-copilot-files.sh` and updated docs to reflect that `specify extension add` installs the extension under `.specify/extensions/autopilot/`, requiring an explicit sync into the project root `.github/` for Copilot prompt discovery
+
+### Added
+
+- New `/speckit.autopilot.bootstrap-copilot` command and matching Copilot prompt wrapper to copy autopilot-managed Copilot files into the project root `.github/` directory after extension installation
 
 ## [1.3.0] - 2026-04-13
 
