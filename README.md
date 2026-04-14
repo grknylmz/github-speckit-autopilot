@@ -2,6 +2,30 @@
 
 A [spec-kit](https://github.com/github/spec-kit) extension that provides an automated pipeline for spec-driven development. One command chains through specify, clarify, plan, tasks, implement, verify, and validate — with auto-answered clarifications, enforced unit + integration test coverage, **self-validating tasks**, automatic post-implementation validation, and pipeline state tracking for reliable resume.
 
+## What This Extension Does
+
+Install this extension into a spec-kit project when you want one orchestrated workflow instead of manually running each phase yourself.
+
+- `/speckit.autopilot.run` is the main entrypoint for feature delivery
+- `/speckit.autopilot.status` shows where a pipeline stopped and what should happen next
+- `/speckit.autopilot.validate` checks task quality, test coverage requirements, and self-validation coverage
+- `/speckit.autopilot.verify` performs runtime checks after implementation
+- `/speckit.autopilot.constitution` injects the autopilot behavioral rules into the project constitution
+- `/speckit.autopilot.bootstrap-copilot` copies the required Copilot files into the project root `.github/` folder
+
+The extension is intentionally an orchestrator. It delegates feature work to the core spec-kit commands and adds autopilot-specific behavior on top: clarification auto-answering, test enforcement, self-validation, runtime verification, self-healing, and resume state tracking.
+
+## Recommended Workflow
+
+Use this sequence in a real project:
+
+1. Initialize your project with spec-kit.
+2. Install this extension into that project.
+3. If you use GitHub Copilot in VS Code, bootstrap the `.github/` Copilot assets.
+4. Run `/speckit.autopilot.run <feature description>`.
+5. If the run stops or you leave mid-run, use `/speckit.autopilot.status` or re-run `/speckit.autopilot.run` to resume.
+6. Use `/speckit.autopilot.validate` or `/speckit.autopilot.verify` directly only when you need those phases independently.
+
 ## Features
 
 - **One-command pipeline**: `/speckit.autopilot.run <feature description>` orchestrates the entire workflow
@@ -23,9 +47,11 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 - A spec-kit initialized project (`/speckit.constitution` run at least once)
 - An AI agent that supports spec-kit commands (Claude Code, Copilot, Cursor, etc.)
 
-> **GitHub Copilot users**: The spec-kit CLI is not required for Copilot usage — the `.github/` prompt files contain self-contained instructions. However, spec-kit provides stronger validation guarantees.
+> **GitHub Copilot users**: If you want the extension to appear as project-level Copilot instructions, prompts, and custom agents in VS Code, you still need to install the extension into the project and then copy the autopilot-managed `.github/` files into the project root. The bootstrap command below handles that.
 
 ## Installation
+
+Install this extension into the target spec-kit project first. After that, decide whether you only need the spec-kit command files or whether you also want GitHub Copilot discovery in VS Code.
 
 ### Option 1: Install from GitHub ZIP (Recommended)
 
@@ -70,13 +96,31 @@ ls .claude/commands/speckit.autopilot.*
 # speckit.autopilot.bootstrap-copilot.md
 ```
 
-### Confirm Copilot Files Are Installed
+### Bootstrap GitHub Copilot Files
 
-If you use GitHub Copilot in VS Code, `specify extension add` installs the extension under `.specify/extensions/autopilot/`. To make the Copilot files available at the project root, either run `/speckit.autopilot.bootstrap-copilot` in a supported agent or run:
+If you use GitHub Copilot in VS Code, there is one more step. The extension installation places the managed Copilot assets under `.specify/extensions/autopilot/`, but VS Code discovers project instructions, prompts, and agents from the project root `.github/` directory.
+
+Run one of these:
+
+```text
+/speckit.autopilot.bootstrap-copilot
+```
+
+or
 
 ```bash
 ./.specify/extensions/autopilot/scripts/sync-copilot-files.sh
 ```
+
+This copies only the autopilot-managed files into:
+
+- `.github/copilot-instructions.md`
+- `.github/prompts/`
+- `.github/agents/`
+
+It does not modify unrelated `.github/` files.
+
+### Confirm Copilot Files Are Installed
 
 Then verify:
 
@@ -97,6 +141,14 @@ ls .github/agents/*.agent.md
 # .github/agents/speckit-autopilot-bootstrap.agent.md
 ```
 
+If VS Code does not show prompt files, enable this setting:
+
+```json
+{
+  "chat.promptFiles": true
+}
+```
+
 ### Uninstall
 
 ```bash
@@ -104,6 +156,24 @@ specify extension remove autopilot
 ```
 
 ## Usage
+
+### Quick Start
+
+For a new project setup, this is the shortest reliable path:
+
+1. Install the extension with `specify extension add autopilot --from https://github.com/grknylmz/github-speckit-autopilot/archive/refs/heads/main.zip`.
+2. If you use GitHub Copilot in VS Code, run `/speckit.autopilot.bootstrap-copilot` once.
+3. Open Copilot Chat or your spec-kit-compatible agent in the project.
+4. Run `/speckit.autopilot.run Add user authentication with OAuth2 and JWT tokens`.
+5. Re-run `/speckit.autopilot.run` with no arguments to resume if the pipeline was interrupted.
+
+### Which Entry Point To Use
+
+- Use `/speckit.autopilot.run` for normal feature delivery.
+- Use `/speckit.autopilot.bootstrap-copilot` only for VS Code Copilot setup.
+- Use `/speckit.autopilot.status` when you need to inspect resume state.
+- Use `/speckit.autopilot.validate` when you want to check task quality or post-run outputs without re-running the full pipeline.
+- Use `/speckit.autopilot.verify` when you want runtime checks without re-running earlier phases.
 
 ### Run the Full Pipeline
 
@@ -121,6 +191,8 @@ This orchestrates:
 6. **Validate** — Runs automatically at the end of implementation as a post-implementation gate before runtime verification
 7. **Verify** — Starts the application, runs health checks (logs, HTTP endpoints, process health), diagnoses issues, and self-heals by generating fix tasks and looping back to implement
 8. **Validate** — Final validation pass confirms implementation and post-verify results after the full pipeline completes
+
+Use this command when you want the extension to follow the authoritative flow in `commands/speckit.autopilot.run.md`. Do not call the underlying core commands manually unless you intentionally want to bypass autopilot orchestration.
 
 ### Check Pipeline Status
 
@@ -165,6 +237,17 @@ Just re-run the same command — the state file is bootstrapped at run start and
 ```
 /speckit.autopilot.run
 ```
+
+The pipeline reads `FEATURE_DIR/autopilot-state.json` first. If that file is missing, it falls back to scanning the generated artifacts to determine the resume point.
+
+### Use With GitHub Copilot in VS Code
+
+After you bootstrap the project-root `.github/` files, there are two supported ways to use the extension in Copilot:
+
+1. Select the `Spec Kit Autopilot` custom agent when you want the run, status, validate, verify, or constitution workflows.
+2. Select the `Spec Kit Autopilot Bootstrap` custom agent when you want to set up Copilot files in a project.
+
+If you prefer prompt files instead of switching agents, use the matching prompt from `.github/prompts/` for the workflow you want.
 
 ### After Autopilot
 
