@@ -69,6 +69,23 @@ ls .claude/commands/speckit.autopilot.*
 # speckit.autopilot.constitution.md
 ```
 
+### Confirm Copilot Files Are Installed
+
+If you use GitHub Copilot in VS Code, the extension install should also materialize the Copilot files in `.github/`:
+
+```bash
+ls .github/copilot-instructions.md
+ls .github/prompts/speckit.autopilot.*.prompt.md
+
+# Should show:
+# .github/copilot-instructions.md
+# .github/prompts/speckit.autopilot.run.prompt.md
+# .github/prompts/speckit.autopilot.status.prompt.md
+# .github/prompts/speckit.autopilot.validate.prompt.md
+# .github/prompts/speckit.autopilot.verify.prompt.md
+# .github/prompts/speckit.autopilot.constitution.prompt.md
+```
+
 ### Uninstall
 
 ```bash
@@ -404,4 +421,4 @@ When you assign an issue to Copilot, the `copilot-instructions.md` is automatica
 - **Prompt files are VS Code only**: The `.github/prompts/` directory is a VS Code Copilot feature
 - **No extension manifest support**: No `requires`, `provides`, or version compatibility checks
 
-For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations.
+For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations. If those files are missing after install, the extension package is incomplete and Copilot prompt entrypoints will not be available.
