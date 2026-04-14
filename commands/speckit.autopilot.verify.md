@@ -1,5 +1,6 @@
 ---
-description: "Verify the built application by starting it, checking logs, hitting endpoints, and diagnosing issues. Self-heals by generating fix tasks and looping back to implement."
+description: 'Verify the built application by starting it, checking logs, hitting endpoints, and diagnosing issues. Self-heals by generating fix tasks and looping back to implement.'
+mode: speckit.autopilot.verify
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -23,13 +24,13 @@ Read `FEATURE_DIR/autopilot-state.json` for the current verify state (iteration 
 
 Read `autopilot-config.yml` for verify settings:
 
-| Setting | Default | Purpose |
-|---------|---------|---------|
-| `verify.max_iterations` | 5 | Maximum self-heal loops |
-| `verify.startup_timeout_seconds` | 30 | Seconds to wait for app startup |
-| `verify.health_retries` | 3 | Health endpoint check retries |
-| `verify.auto_heal` | true | Generate fix tasks on failure |
-| `verify.endpoints` | [] | Explicit endpoints (overrides auto-detection) |
+| Setting                          | Default | Purpose                                       |
+| -------------------------------- | ------- | --------------------------------------------- |
+| `verify.max_iterations`          | 5       | Maximum self-heal loops                       |
+| `verify.startup_timeout_seconds` | 30      | Seconds to wait for app startup               |
+| `verify.health_retries`          | 3       | Health endpoint check retries                 |
+| `verify.auto_heal`               | true    | Generate fix tasks on failure                 |
+| `verify.endpoints`               | []      | Explicit endpoints (overrides auto-detection) |
 
 ### 2. Stop Any Previous Instance
 
@@ -49,6 +50,7 @@ Determine how to start the application. Follow this priority sequence:
 **3b. Plan** — If no quickstart, read `FEATURE_DIR/plan.md`. Look for "Quickstart", "Getting Started", or "Running" sections with startup instructions.
 
 **3c. Project conventions** — If neither yields a command, inspect the project root:
+
 - `package.json` → `scripts.start` or `scripts.dev`
 - `Makefile` → `serve`, `run`, `start` targets
 - `docker-compose.yml` or `Dockerfile` → `docker compose up`
@@ -79,27 +81,31 @@ Stop here. Set `verify.status: "failed"` with error detail.
 **Readiness detection** (in order of priority):
 
 a. If a health endpoint exists (from contracts or self-validation tasks), poll it:
-   ```bash
-   for i in $(seq 1 {health_retries}); do
-     curl -sf http://localhost:{port}/health && break
-     sleep {startup_timeout_seconds / health_retries}
-   done
-   ```
+
+```bash
+for i in $(seq 1 {health_retries}); do
+  curl -sf http://localhost:{port}/health && break
+  sleep {startup_timeout_seconds / health_retries}
+done
+```
 
 b. If no health endpoint, check if the process is running and the port is listening:
-   ```bash
-   lsof -i :{port} || curl -sf http://localhost:{port}
-   ```
+
+```bash
+lsof -i :{port} || curl -sf http://localhost:{port}
+```
 
 c. If neither is applicable, wait the full timeout and check if the process is still alive.
 
 **If startup fails** (process exits, port not listening after timeout):
+
 - Capture stdout and stderr from the startup process.
 - Set `verify.checks.startup.status: "fail"`.
 - Record the error output in the checks.
 - Proceed to Step 6 (Diagnose).
 
 **If startup succeeds**:
+
 - Record `verify.checks.startup.status: "pass"`, the command used, and time to ready.
 - Proceed to Step 5 (Health Checks).
 
@@ -110,11 +116,13 @@ Execute checks and record results for each.
 #### 5a. Log Analysis
 
 Read application logs:
+
 - Stdout/stderr captured during startup
 - Log files at conventional paths: `logs/`, `*.log`, `var/log/`
 - Application-specific log output (e.g., `journalctl`, Docker logs if containerized)
 
 **Error patterns** to detect (case-insensitive):
+
 - `ERROR`, `FATAL`, `CRITICAL`, `PANIC`
 - `Exception`, `Traceback`, `Stack trace`, `Segmentation fault`
 - `ECONNREFUSED`, `ENOMEM`, `ETIMEOUT`
@@ -122,10 +130,12 @@ Read application logs:
 - `failed to`, `cannot`, `unable to`
 
 **Positive patterns** to confirm:
+
 - `listening on port`, `server started`, `ready`, `connected to`
 - `migration completed`, `database connected`
 
 Record:
+
 ```
 verify.checks.log_analysis:
   errors: {count}
@@ -144,6 +154,7 @@ Collect endpoints to test. Priority order:
 5. **Default health endpoints** — If nothing found, try standard paths: `/health`, `/healthz`, `/ready`, `/status`, `/api/health`.
 
 For each endpoint, make an HTTP request:
+
 - Record: HTTP status code, response body (truncated to 500 chars), response time.
 - Classify: **PASS** (2xx matching expectations), **WARN** (3xx or unexpected 2xx), **FAIL** (4xx/5xx/timeout/connection refused).
 
@@ -179,12 +190,12 @@ verify.checks.process:
 
 Aggregate all check results into a verdict:
 
-| Condition | Verdict |
-|-----------|---------|
-| All endpoints PASS, no error log patterns, process healthy | `healthy` |
-| Some endpoints WARN, minor log warnings, process healthy | `degraded` |
-| Any endpoint FAIL, critical log errors, process crashed | `failed` |
-| Startup itself failed (process never became ready) | `startup_failed` |
+| Condition                                                  | Verdict          |
+| ---------------------------------------------------------- | ---------------- |
+| All endpoints PASS, no error log patterns, process healthy | `healthy`        |
+| Some endpoints WARN, minor log warnings, process healthy   | `degraded`       |
+| Any endpoint FAIL, critical log errors, process crashed    | `failed`         |
+| Startup itself failed (process never became ready)         | `startup_failed` |
 
 ### 7. Diagnose Issues
 
@@ -193,18 +204,21 @@ If verdict is NOT `healthy`, perform diagnosis.
 #### 7a. Correlate Errors to Tasks
 
 For each error found:
+
 - Match the error's file path, module name, or component name against tasks in `tasks.md`.
 - Identify which implementation task likely introduced the issue.
 
 #### 7b. Analyze Stack Traces
 
 For each stack trace:
+
 - Extract the failing file, line number, and function name.
 - Determine root cause: null reference, missing import, wrong config, type mismatch, missing dependency, etc.
 
 #### 7c. Analyze HTTP Failures
 
 For each failed endpoint:
+
 - Determine category: routing (404), auth (401/403), server error (500), connectivity (connection refused/timeout).
 - Cross-reference with contract definition (if available) to identify divergence.
 
@@ -276,6 +290,7 @@ After appending, ensure all task IDs remain sequential (T001, T002, ..., T{last}
 2. The orchestrator (run command) detects `verify.status: "healing"` and re-triggers the implement phase for the new fix tasks.
 
 **If iteration count has reached `verify.max_iterations`**:
+
 - Do NOT generate fix tasks.
 - Report remaining issues.
 - Set `verify.status: "failed"`.

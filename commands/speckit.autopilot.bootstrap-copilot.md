@@ -1,5 +1,6 @@
 ---
 description: "Bootstrap GitHub Copilot support by copying the extension's Copilot instruction, prompt, and custom agent files into the project root .github directory."
+mode: speckit.autopilot.bootstrap-copilot
 ---
 
 # Bootstrap GitHub Copilot Support

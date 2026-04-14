@@ -1,5 +1,6 @@
 ---
-description: "Merge autopilot behavioral guidelines into the project constitution. Ensures all tasks follow think-before-code, simplicity-first, surgical-changes, and goal-driven-execution principles."
+description: 'Merge autopilot behavioral guidelines into the project constitution. Ensures all tasks follow think-before-code, simplicity-first, surgical-changes, and goal-driven-execution principles.'
+mode: speckit.autopilot.constitution
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -39,7 +40,6 @@ Stop here.
 Append the following section to the constitution file. Place it at the end, after any existing content. **Do not modify existing constitution content.**
 
 ```markdown
-
 ---
 
 <!-- AUTOPILOT-BEHAVIORAL-GUIDELINES -->
@@ -54,6 +54,7 @@ _Behavioral rules that reduce common LLM coding mistakes. These bias toward caut
 _Don't assume. Don't hide confusion. Surface tradeoffs._
 
 Before implementing any task:
+
 - **State assumptions explicitly.** If uncertain, ask.
 - **If multiple interpretations exist, present them** — don't pick silently.
 - **If a simpler approach exists, say so.** Push back when warranted.
@@ -76,12 +77,14 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 _Touch only what you must. Clean up only your own mess._
 
 When editing existing code:
+
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it — don't delete it.
 
 When your changes create orphans:
+
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
 
@@ -92,16 +95,18 @@ The test: Every changed line should trace directly to the user's request.
 _Define success criteria. Loop until verified._
 
 Transform tasks into verifiable goals:
+
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
 For multi-step tasks, state a brief plan:
-
 ```
+
 1. [Step] → verify: [check]
 2. [Step] → verify: [check]
 3. [Step] → verify: [check]
+
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
@@ -124,6 +129,7 @@ _These guidelines are working if: fewer unnecessary changes in diffs, fewer rewr
 ### 4. Verify
 
 Re-read the constitution file and confirm:
+
 - The `AUTOPILOT-BEHAVIORAL-GUIDELINES` marker is present
 - All 4 rules are included
 - Existing constitution content is unchanged

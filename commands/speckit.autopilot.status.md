@@ -1,5 +1,6 @@
 ---
-description: "Check the current status of the autopilot pipeline using the state file and artifact scan."
+description: 'Check the current status of the autopilot pipeline using the state file and artifact scan.'
+mode: speckit.autopilot.status
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -40,34 +41,34 @@ Read `FEATURE_DIR/autopilot-state.json` if it exists.
 
 Scan the feature directory for artifacts and infer phase status:
 
-| Condition | Inferred Status |
-|-----------|-----------------|
-| No `spec.md` | Pipeline not started |
-| `spec.md` exists, no `## Clarifications` with "Autopilot Session" | Specify done |
-| `spec.md` has "Autopilot Session" clarifications | Specify + Clarify done |
-| `plan.md` exists | Specify + Clarify + Plan done |
-| `tasks.md` exists, some tasks `- [ ]` | Tasks done, implement not started |
-| `tasks.md` exists, all tasks `- [X]` or `- [x]` | Tasks + Implement done |
-| `verify-results.log` exists | Verify done |
+| Condition                                                         | Inferred Status                   |
+| ----------------------------------------------------------------- | --------------------------------- |
+| No `spec.md`                                                      | Pipeline not started              |
+| `spec.md` exists, no `## Clarifications` with "Autopilot Session" | Specify done                      |
+| `spec.md` has "Autopilot Session" clarifications                  | Specify + Clarify done            |
+| `plan.md` exists                                                  | Specify + Clarify + Plan done     |
+| `tasks.md` exists, some tasks `- [ ]`                             | Tasks done, implement not started |
+| `tasks.md` exists, all tasks `- [X]` or `- [x]`                   | Tasks + Implement done            |
+| `verify-results.log` exists                                       | Verify done                       |
 
 ### 3. Scan Artifacts
 
 Regardless of state file presence, scan the feature directory for these artifacts:
 
-| Artifact | Path | Phase |
-|----------|------|-------|
-| Specification | `spec.md` | Specify |
-| Quality Checklist | `checklists/requirements.md` | Specify |
-| Clarifications | `spec.md` → `## Clarifications` section | Clarify |
-| Research | `research.md` | Plan |
-| Implementation Plan | `plan.md` | Plan |
-| Data Model | `data-model.md` | Plan |
-| Contracts | `contracts/` | Plan |
-| Quickstart | `quickstart.md` | Plan |
-| Tasks | `tasks.md` | Tasks |
-| Validation Results | `validation-results.log` | Implement |
-| Verify Results | `verify-results.log` | Verify |
-| Validation State | `autopilot-state.json` | Validate |
+| Artifact            | Path                                    | Phase     |
+| ------------------- | --------------------------------------- | --------- |
+| Specification       | `spec.md`                               | Specify   |
+| Quality Checklist   | `checklists/requirements.md`            | Specify   |
+| Clarifications      | `spec.md` → `## Clarifications` section | Clarify   |
+| Research            | `research.md`                           | Plan      |
+| Implementation Plan | `plan.md`                               | Plan      |
+| Data Model          | `data-model.md`                         | Plan      |
+| Contracts           | `contracts/`                            | Plan      |
+| Quickstart          | `quickstart.md`                         | Plan      |
+| Tasks               | `tasks.md`                              | Tasks     |
+| Validation Results  | `validation-results.log`                | Implement |
+| Verify Results      | `verify-results.log`                    | Verify    |
+| Validation State    | `autopilot-state.json`                  | Validate  |
 
 ### 4. Parse Task Details (if tasks.md exists)
 
@@ -175,15 +176,15 @@ Next Step: {recommended command}
 
 Based on the current state, suggest the next action:
 
-| Current State | Recommendation |
-|---------------|----------------|
-| Not started | `/speckit.autopilot.run <feature description>` |
-| Specify complete, clarify failed | `/speckit.autopilot.run` (resumes from clarify) |
-| Specify + Clarify done | `/speckit.autopilot.run` (resumes from plan) |
-| Tasks done, implement not started | `/speckit.autopilot.run` (resumes from implement) |
-| Implement in progress | `/speckit.autopilot.run` (resumes from failed task) |
-| Verify failed, iterations remain | `/speckit.autopilot.run` (resumes verify self-heal loop) |
-| Verify failed, max iterations reached | Manual investigation needed; check verify-results.log |
-| All phases done, tasks complete | `/speckit.analyze` |
-| Validation not run | `/speckit.autopilot.validate` |
-| Validation failed | `/speckit.autopilot.validate` (auto-fix) |
+| Current State                         | Recommendation                                           |
+| ------------------------------------- | -------------------------------------------------------- |
+| Not started                           | `/speckit.autopilot.run <feature description>`           |
+| Specify complete, clarify failed      | `/speckit.autopilot.run` (resumes from clarify)          |
+| Specify + Clarify done                | `/speckit.autopilot.run` (resumes from plan)             |
+| Tasks done, implement not started     | `/speckit.autopilot.run` (resumes from implement)        |
+| Implement in progress                 | `/speckit.autopilot.run` (resumes from failed task)      |
+| Verify failed, iterations remain      | `/speckit.autopilot.run` (resumes verify self-heal loop) |
+| Verify failed, max iterations reached | Manual investigation needed; check verify-results.log    |
+| All phases done, tasks complete       | `/speckit.analyze`                                       |
+| Validation not run                    | `/speckit.autopilot.validate`                            |
+| Validation failed                     | `/speckit.autopilot.validate` (auto-fix)                 |

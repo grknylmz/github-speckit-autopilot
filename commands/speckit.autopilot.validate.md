@@ -1,5 +1,6 @@
 ---
-description: "Validate that generated tasks have proper unit tests, integration tests, self-validation coverage for all implementation tasks, and post-implementation verification."
+description: 'Validate that generated tasks have proper unit tests, integration tests, self-validation coverage for all implementation tasks, and post-implementation verification.'
+mode: speckit.autopilot.validate
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -31,17 +32,18 @@ No tasks.md found. Run /speckit.autopilot.run or /speckit.tasks first.
 
 Parse every task line (matching `- [ ] T{NNN}` or `- [x] T{NNN}` or `- [X] T{NNN}`). For each task, classify it:
 
-| Category | Match Pattern | Examples |
-|----------|---------------|---------|
-| Unit Test | Contains "unit test" (case-insensitive) | "Write unit tests for UserService" |
-| Integration Test | Contains "integration test" (case-insensitive) | "Write integration tests for auth flow" |
-| Self-Validation | Contains "self-validation" or "self validation" (case-insensitive) | "Add self-validation for OrderService" |
-| Test (Generic) | Contains "test" but not "unit" or "integration" or "self-validation" | "Run test suite", "Add missing tests" |
-| Implementation | Contains "Implement", "Create", "Build", "Add", "Write" AND is NOT a test/validation task | "Implement UserService", "Create API endpoint" |
-| Setup/Config | Infrastructure, configuration, initialization | "Create project structure", "Install dependencies" |
-| Verification | Contains "Verify", "Run", "Check", "Ensure" AND is NOT a self-validation task | "Run full test suite", "Verify coverage" |
+| Category         | Match Pattern                                                                             | Examples                                           |
+| ---------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Unit Test        | Contains "unit test" (case-insensitive)                                                   | "Write unit tests for UserService"                 |
+| Integration Test | Contains "integration test" (case-insensitive)                                            | "Write integration tests for auth flow"            |
+| Self-Validation  | Contains "self-validation" or "self validation" (case-insensitive)                        | "Add self-validation for OrderService"             |
+| Test (Generic)   | Contains "test" but not "unit" or "integration" or "self-validation"                      | "Run test suite", "Add missing tests"              |
+| Implementation   | Contains "Implement", "Create", "Build", "Add", "Write" AND is NOT a test/validation task | "Implement UserService", "Create API endpoint"     |
+| Setup/Config     | Infrastructure, configuration, initialization                                             | "Create project structure", "Install dependencies" |
+| Verification     | Contains "Verify", "Run", "Check", "Ensure" AND is NOT a self-validation task             | "Run full test suite", "Verify coverage"           |
 
 Also extract for each task:
+
 - Task ID (T001, T002, etc.)
 - User story label ([US1], [US2], etc.) if present
 - File path mentioned in the description
@@ -109,6 +111,7 @@ For each user story with implementation tasks, verify there's at least one self-
 #### Check 8: Self-Validation Technique and Success Criteria
 
 For every self-validation task, verify it specifies:
+
 1. A **technique** (logging, smoke, assertion, build, schema, health, dry-run, idempotency, contract, or snapshot)
 2. A **validation** check (what to execute)
 3. A **success criteria** (what "pass" looks like)
@@ -300,7 +303,7 @@ If validation fails and the user wants to fix:
    - Service/server → health endpoint
    - Configuration → build verification
    - CLI command → dry-run
-   Insert after the implementation task. Include technique, validation, and success criteria. Re-number all task IDs.
+     Insert after the implementation task. Include technique, validation, and success criteria. Re-number all task IDs.
 
 8. **Incomplete self-validation**: For self-validation tasks missing technique/validation/success criteria, fill in the missing fields based on the task's implementation context.
 

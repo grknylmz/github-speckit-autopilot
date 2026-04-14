@@ -1,5 +1,6 @@
 ---
 description: 'Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks → implement → verify (runtime health + self-heal) → validate. Delegates to core commands and applies autopilot-specific post-processing.'
+mode: speckit.autopilot.run
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
