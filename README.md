@@ -345,13 +345,13 @@ Key design decisions:
 
 ## Commands
 
-| Command                           | Description                                                               |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| `/speckit.autopilot.run`          | Run the full pipeline                                                     |
-| `/speckit.autopilot.status`       | Check pipeline progress                                                   |
-| `/speckit.autopilot.validate`     | Validate test coverage, self-validation, and behavioral compliance        |
-| `/speckit.autopilot.verify`       | Runtime verification: start app, check health, diagnose issues, self-heal |
-| `/speckit.autopilot.constitution` | Merge behavioral guidelines into project constitution                     |
+| Command                                | Description                                                                |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| `/speckit.autopilot.run`               | Run the full pipeline                                                      |
+| `/speckit.autopilot.status`            | Check pipeline progress                                                    |
+| `/speckit.autopilot.validate`          | Validate test coverage, self-validation, and behavioral compliance         |
+| `/speckit.autopilot.verify`            | Runtime verification: start app, check health, diagnose issues, self-heal  |
+| `/speckit.autopilot.constitution`      | Merge behavioral guidelines into project constitution                      |
 | `/speckit.autopilot.bootstrap-copilot` | Copy Copilot instruction and prompt files into the project root `.github/` |
 
 ## Requirements
@@ -404,23 +404,23 @@ The behavioral rules, three-pillar enforcement, and pipeline conventions are aut
 4. Type your feature description or question
 5. Submit
 
-| Prompt File                      | Equivalent Command                | Purpose                                                           |
-| -------------------------------- | --------------------------------- | ----------------------------------------------------------------- |
-| `speckit.autopilot.run`          | `/speckit.autopilot.run`          | Full pipeline orchestration via the extension command definitions |
-| `speckit.autopilot.status`       | `/speckit.autopilot.status`       | Check pipeline progress                                           |
-| `speckit.autopilot.validate`     | `/speckit.autopilot.validate`     | Validate task coverage (16 checks)                                |
-| `speckit.autopilot.verify`       | `/speckit.autopilot.verify`       | Runtime verification + self-heal                                  |
-| `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines                                       |
+| Prompt File                           | Equivalent Command                     | Purpose                                                           |
+| ------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| `speckit.autopilot.run`               | `/speckit.autopilot.run`               | Full pipeline orchestration via the extension command definitions |
+| `speckit.autopilot.status`            | `/speckit.autopilot.status`            | Check pipeline progress                                           |
+| `speckit.autopilot.validate`          | `/speckit.autopilot.validate`          | Validate task coverage (16 checks)                                |
+| `speckit.autopilot.verify`            | `/speckit.autopilot.verify`            | Runtime verification + self-heal                                  |
+| `speckit.autopilot.constitution`      | `/speckit.autopilot.constitution`      | Merge behavioral guidelines                                       |
 | `speckit.autopilot.bootstrap-copilot` | `/speckit.autopilot.bootstrap-copilot` | Copy Copilot files into the project root `.github/`               |
 
 #### Using Custom Agents
 
 After bootstrap, these custom agents are available from `.github/agents/`:
 
-| Agent File | Purpose |
-| ---------- | ------- |
-| `speckit-autopilot.agent.md` | Run the autopilot workflows by reading the authoritative files in `commands/` |
-| `speckit-autopilot-bootstrap.agent.md` | Set up project-root Copilot instruction, prompt, and agent files |
+| Agent File                             | Purpose                                                                       |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `speckit-autopilot.agent.md`           | Run the autopilot workflows by reading the authoritative files in `commands/` |
+| `speckit-autopilot-bootstrap.agent.md` | Set up project-root Copilot instruction, prompt, and agent files              |
 
 #### Using with Copilot Coding Agent
 

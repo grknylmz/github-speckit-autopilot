@@ -83,7 +83,7 @@ If VS Code prompt files are not yet enabled, remind the user to set:
 
 ```json
 {
-  "chat.promptFiles": true
+	"chat.promptFiles": true
 }
 ```
 
