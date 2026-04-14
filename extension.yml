@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: 'autopilot'
   name: 'Spec Kit Autopilot'
-  version: '1.2.0'
+  version: '1.3.0'
   description: 'Automated pipeline orchestrating specify, clarify, plan, tasks, implement, verify, and validate with auto-answered clarifications, enforced test coverage, self-validating tasks, runtime health checks, and self-healing'
   author: 'Gurkan Yilmaz'
   repository: 'https://github.com/grknylmz/github-speckit-autopilot'
@@ -23,8 +23,6 @@ provides:
     - name: 'speckit.autopilot.run'
       file: 'commands/speckit.autopilot.run.md'
       description: 'Orchestrate the full pipeline: specify → clarify (auto) → plan → tasks → implement → verify → validate'
-      aliases:
-        - 'speckit.autopilot.start'
 
     - name: 'speckit.autopilot.status'
       file: 'commands/speckit.autopilot.status.md'

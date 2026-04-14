@@ -51,9 +51,9 @@ specify extension add --dev /path/to/github-speckit-autopilot
 specify extension list
 
 # Should show:
-#  ✓ Spec Kit Autopilot (v1.0.0)
-#     Automated pipeline orchestrating specify, clarify, plan, and tasks
-#     Commands: 3 | Hooks: 0 | Status: Enabled
+#  ✓ Spec Kit Autopilot (v1.3.0)
+#     Automated pipeline orchestrating specify, clarify, plan, tasks, implement, verify, and validate
+#     Commands: 5 | Hooks: 0 | Status: Enabled
 ```
 
 ### Confirm Commands Are Registered
@@ -63,9 +63,10 @@ ls .claude/commands/speckit.autopilot.*
 
 # Should show:
 # speckit.autopilot.run.md
-# speckit.autopilot.start.md   (alias)
 # speckit.autopilot.status.md
 # speckit.autopilot.validate.md
+# speckit.autopilot.verify.md
+# speckit.autopilot.constitution.md
 ```
 
 ### Uninstall
@@ -319,7 +320,6 @@ Key design decisions:
 | Command                           | Description                                                               |
 | --------------------------------- | ------------------------------------------------------------------------- |
 | `/speckit.autopilot.run`          | Run the full pipeline                                                     |
-| `/speckit.autopilot.start`        | Alias for `run`                                                           |
 | `/speckit.autopilot.status`       | Check pipeline progress                                                   |
 | `/speckit.autopilot.validate`     | Validate test coverage, self-validation, and behavioral compliance        |
 | `/speckit.autopilot.verify`       | Runtime verification: start app, check health, diagnose issues, self-heal |
@@ -371,13 +371,13 @@ The behavioral rules, three-pillar enforcement, and pipeline conventions are aut
 4. Type your feature description or question
 5. Submit
 
-| Prompt File                      | Equivalent Command                | Purpose                            |
-| -------------------------------- | --------------------------------- | ---------------------------------- |
-| `speckit.autopilot.run`          | `/speckit.autopilot.run`          | Full pipeline orchestration        |
-| `speckit.autopilot.status`       | `/speckit.autopilot.status`       | Check pipeline progress            |
-| `speckit.autopilot.validate`     | `/speckit.autopilot.validate`     | Validate task coverage (16 checks) |
-| `speckit.autopilot.verify`       | `/speckit.autopilot.verify`       | Runtime verification + self-heal   |
-| `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines        |
+| Prompt File                      | Equivalent Command                | Purpose                                                           |
+| -------------------------------- | --------------------------------- | ----------------------------------------------------------------- |
+| `speckit.autopilot.run`          | `/speckit.autopilot.run`          | Full pipeline orchestration via the extension command definitions |
+| `speckit.autopilot.status`       | `/speckit.autopilot.status`       | Check pipeline progress                                           |
+| `speckit.autopilot.validate`     | `/speckit.autopilot.validate`     | Validate task coverage (16 checks)                                |
+| `speckit.autopilot.verify`       | `/speckit.autopilot.verify`       | Runtime verification + self-heal                                  |
+| `speckit.autopilot.constitution` | `/speckit.autopilot.constitution` | Merge behavioral guidelines                                       |
 
 #### Using with Copilot Coding Agent
 
@@ -385,16 +385,16 @@ When you assign an issue to Copilot, the `copilot-instructions.md` is automatica
 
 ### Feature Parity
 
-| Feature                 | Claude Code                       | GitHub Copilot                        |
-| ----------------------- | --------------------------------- | ------------------------------------- |
-| Auto-loaded context     | extension.yml + commands/         | copilot-instructions.md               |
-| Slash commands          | `/speckit.autopilot.run` etc.     | Prompt files (manual attach)          |
-| Script execution        | `{SCRIPT}` placeholders           | Not supported (file reading fallback) |
-| speckit CLI integration | Full (delegates to core commands) | Self-contained instructions           |
-| State file management   | Automatic                         | Copilot follows inline instructions   |
-| Resume support          | Built-in via state file           | Re-attach prompt (state preserved)    |
-| Self-heal loop          | Automatic loop                    | Manual re-attach verify prompt        |
-| Configuration           | autopilot-config.yml              | Same file, read by Copilot            |
+| Feature                   | Claude Code                       | GitHub Copilot                                  |
+| ------------------------- | --------------------------------- | ----------------------------------------------- |
+| `Auto-loaded context`     | extension.yml + commands/         | copilot-instructions.md + commands/             |
+| Slash commands            | `/speckit.autopilot.run` etc.     | Prompt files (manual attach)                    |
+| Script execution          | `{SCRIPT}` placeholders           | Not supported (file reading fallback)           |
+| `speckit CLI integration` | Full (delegates to core commands) | Command-backed instructions from this extension |
+| State file management     | Automatic                         | Copilot follows command-backed prompt wrappers  |
+| Resume support            | Built-in via state file           | Re-attach prompt (state preserved)              |
+| Self-heal loop            | Automatic loop                    | Manual re-attach verify prompt                  |
+| Configuration             | autopilot-config.yml              | Same file, read by Copilot                      |
 
 ### Limitations
 
@@ -403,3 +403,5 @@ When you assign an issue to Copilot, the `copilot-instructions.md` is automatica
 - **Self-heal loop requires manual re-invocation**: After fix tasks are generated, re-attach the verify prompt
 - **Prompt files are VS Code only**: The `.github/prompts/` directory is a VS Code Copilot feature
 - **No extension manifest support**: No `requires`, `provides`, or version compatibility checks
+
+For all autopilot prompts, Copilot should follow the matching workflow defined in `commands/` via the prompt wrappers in `.github/prompts/`, rather than relying on separate prompt-only implementations.

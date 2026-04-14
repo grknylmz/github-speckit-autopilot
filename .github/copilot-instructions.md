@@ -2,6 +2,14 @@
 
 This project uses a spec-driven development pipeline called Spec Kit Autopilot. When working on features or tasks in this repository, follow the rules and conventions below.
 
+## Command Authority
+
+When the user invokes `speckit.autopilot.run` or asks to run the autopilot pipeline, treat the command files in `commands/` as the authoritative workflow definition.
+
+- Read `commands/speckit.autopilot.run.md` and follow it instead of inventing a parallel inline workflow.
+- When that workflow delegates to companion autopilot commands, use the matching files in `commands/` as the source of truth: `speckit.autopilot.constitution`, `speckit.autopilot.verify`, `speckit.autopilot.validate`, and `speckit.autopilot.status`.
+- Use `/speckit.autopilot.run` as the only entrypoint. Do not use or suggest `speckit.autopilot.start`.
+
 ## Pipeline Architecture
 
 Features are built through a 7-phase pipeline:
@@ -21,12 +29,14 @@ Pipeline state is tracked in `FEATURE_DIR/autopilot-state.json`.
 When generating or executing tasks, follow these four rules:
 
 ### Rule 1: Think Before Coding
+
 - State assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them — don't pick silently.
 - If a simpler approach exists, say so.
 - If something is unclear, stop and ask.
 
 ### Rule 2: Simplicity First
+
 - No features beyond what was asked.
 - No abstractions for single-use code.
 - No "flexibility" or "configurability" that wasn't requested.
@@ -34,12 +44,14 @@ When generating or executing tasks, follow these four rules:
 - If you write 200 lines and it could be 50, rewrite it.
 
 ### Rule 3: Surgical Changes
+
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - Every changed line should trace directly to the user's request.
 
 ### Rule 4: Goal-Driven Execution
+
 - Every task must include explicit success criteria.
 - Transform "implement X" into "implement X, verify: {check}".
 - For multi-step tasks, state a plan with verification at each step.
@@ -58,18 +70,18 @@ Tests are ALWAYS MANDATORY in autopilot mode. There is no "optional" test genera
 
 Each implementation task requires at least one self-validation step:
 
-| Technique | When to Use | Example |
-|-----------|-------------|---------|
-| **Logging** | Data processing, business logic | Log structured output; check log contains expected values |
-| **Smoke test** | API endpoints, CLI commands | `curl -f http://localhost:3000/api/health` |
-| **Assertion** | Calculations, transformations | `assert(result > 0)` |
-| **Build** | New modules, components | `npm run build && npm run typecheck` with zero errors |
-| **Schema** | Data models, migrations | `npx prisma validate` |
-| **Health endpoint** | Services, APIs | `GET /health` returns `{status: "ok"}` |
-| **Dry-run** | Destructive operations | `--dry-run` flag outputs what would happen |
-| **Idempotency** | State mutations | Run twice, verify identical state |
-| **Contract** | API integrations | Response matches expected JSON schema |
-| **Snapshot** | Output generation, reports | Compare output against golden snapshot |
+| Technique           | When to Use                     | Example                                                   |
+| ------------------- | ------------------------------- | --------------------------------------------------------- |
+| **Logging**         | Data processing, business logic | Log structured output; check log contains expected values |
+| **Smoke test**      | API endpoints, CLI commands     | `curl -f http://localhost:3000/api/health`                |
+| **Assertion**       | Calculations, transformations   | `assert(result > 0)`                                      |
+| **Build**           | New modules, components         | `npm run build && npm run typecheck` with zero errors     |
+| **Schema**          | Data models, migrations         | `npx prisma validate`                                     |
+| **Health endpoint** | Services, APIs                  | `GET /health` returns `{status: "ok"}`                    |
+| **Dry-run**         | Destructive operations          | `--dry-run` flag outputs what would happen                |
+| **Idempotency**     | State mutations                 | Run twice, verify identical state                         |
+| **Contract**        | API integrations                | Response matches expected JSON schema                     |
+| **Snapshot**        | Output generation, reports      | Compare output against golden snapshot                    |
 
 ## Task Format
 
@@ -96,16 +108,16 @@ Tasks in `tasks.md` follow this format:
 
 ## Key File Paths
 
-| File | Purpose |
-|------|---------|
-| `.specify/specs/{feature}/spec.md` | Feature specification |
-| `.specify/specs/{feature}/plan.md` | Implementation plan |
-| `.specify/specs/{feature}/tasks.md` | Task list |
-| `.specify/specs/{feature}/autopilot-state.json` | Pipeline state tracking |
-| `.specify/specs/{feature}/validation-results.log` | Self-validation results |
-| `.specify/specs/{feature}/verify-results.log` | Runtime verification results |
-| `.specify/extensions/autopilot/autopilot-config.yml` | Autopilot configuration |
-| `.specify/constitution.md` | Project behavioral constitution |
+| File                                                 | Purpose                         |
+| ---------------------------------------------------- | ------------------------------- |
+| `.specify/specs/{feature}/spec.md`                   | Feature specification           |
+| `.specify/specs/{feature}/plan.md`                   | Implementation plan             |
+| `.specify/specs/{feature}/tasks.md`                  | Task list                       |
+| `.specify/specs/{feature}/autopilot-state.json`      | Pipeline state tracking         |
+| `.specify/specs/{feature}/validation-results.log`    | Self-validation results         |
+| `.specify/specs/{feature}/verify-results.log`        | Runtime verification results    |
+| `.specify/extensions/autopilot/autopilot-config.yml` | Autopilot configuration         |
+| `.specify/constitution.md`                           | Project behavioral constitution |
 
 ## Configuration
 
@@ -120,6 +132,7 @@ Read `.specify/extensions/autopilot/autopilot-config.yml` for pipeline settings.
 ## Task Ordering (TDD)
 
 Within each user story, tasks follow this order:
+
 1. Unit test tasks (before the implementation they test)
 2. Implementation tasks (with self-validation built in)
 3. Self-validation task (explicit verification step)
