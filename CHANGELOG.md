@@ -5,6 +5,12 @@ All notable changes to the Spec Kit Autopilot extension will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `validate` now runs automatically after every successful implement pass and remains the terminal phase for pipelines that include `implement`
+
 ## [1.3.0] - 2026-04-13
 
 ### Added

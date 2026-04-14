@@ -1,5 +1,5 @@
 ---
-description: "Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks → implement → verify (runtime health + self-heal) → validate. Delegates to core commands and applies autopilot-specific post-processing."
+description: 'Orchestrate the full spec-kit pipeline: specify → clarify (auto-answer) → plan → tasks → implement → verify (runtime health + self-heal) → validate. Delegates to core commands and applies autopilot-specific post-processing.'
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --paths-only
   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
@@ -10,6 +10,7 @@ scripts:
 Orchestrates the full spec-kit pipeline automatically. This command **delegates** to the core spec-kit commands (`/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`) and adds an automation layer on top: auto-answered clarifications, enforced test coverage, self-validating tasks, task execution, and pipeline state tracking.
 
 **Three mandatory pillars for every task**:
+
 1. **Unit tests** — Verify individual functions/methods work in isolation
 2. **Integration tests** — Verify components work together correctly
 3. **Self-validation** — Each feature built must include a runnable verification that the autopilot can execute to confirm it works without human intervention
@@ -86,6 +87,7 @@ Before any pipeline phase runs, ensure the project constitution includes autopil
 4. These guidelines will be loaded by `/speckit.plan` during its constitution check phase, ensuring all subsequent tasks follow the behavioral rules.
 
 **The 4 behavioral rules** (enforced throughout the pipeline):
+
 - **Think Before Coding** — State assumptions, surface tradeoffs, ask before assuming
 - **Simplicity First** — Minimum code, no speculative features, no over-abstraction
 - **Surgical Changes** — Touch only what you must, match existing style
@@ -95,7 +97,7 @@ Before any pipeline phase runs, ensure the project constitution includes autopil
 
 Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge with extension defaults. Key configuration:
 
-- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks", "implement", "verify"]`). Users can remove phases to skip them.
+- `pipeline.phases` — Ordered list of phases to run (default: `["specify", "clarify", "plan", "tasks", "implement", "verify", "validate"]`). If `implement` is present, `validate` must remain the last phase.
 - `pipeline.stop_on_failure` — Halt on any phase failure (default: `true`).
 - `clarify.auto_answer` — Auto-answer clarification questions (default: `true`).
 - `clarify.use_recommended` — Use recommended option (default: `true`).
@@ -115,10 +117,12 @@ Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge wi
 Run `{SCRIPT}` from repo root and parse JSON payload for `FEATURE_DIR` and `FEATURE_SPEC`.
 
 **If the script returns valid paths** (feature already exists):
+
 - Read `FEATURE_DIR/autopilot-state.json` if it exists to determine resume point.
 - If no state file, scan artifacts to determine resume point (see Resume Logic below).
 
 **If the script fails or no feature exists**:
+
 - The feature directory will be created by `/speckit.specify` in Phase 1.
 
 ### 0.3 Resume Logic
@@ -127,35 +131,42 @@ If `FEATURE_DIR/autopilot-state.json` exists, read it and determine which phases
 
 ```json
 {
-  "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
-  "feature_directory": "specs/003-feature-name",
-  "phases": {
-    "specify":  { "status": "complete", "completed_at": "..." },
-    "clarify":  { "status": "complete", "completed_at": "...", "questions_answered": 4 },
-    "plan":     { "status": "failed",   "error": "..." },
-    "tasks":    { "status": "pending" },
-    "implement":{ "status": "pending" },
-    "verify":   { "status": "pending" },
-    "validate": { "status": "pending" }
-  },
-  "started_at": "...",
-  "last_updated_at": "..."
+	"pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
+	"feature_directory": "specs/003-feature-name",
+	"phases": {
+		"specify": { "status": "complete", "completed_at": "..." },
+		"clarify": {
+			"status": "complete",
+			"completed_at": "...",
+			"questions_answered": 4
+		},
+		"plan": { "status": "failed", "error": "..." },
+		"tasks": { "status": "pending" },
+		"implement": { "status": "pending" },
+		"verify": { "status": "pending" },
+		"validate": { "status": "pending" }
+	},
+	"started_at": "...",
+	"last_updated_at": "..."
 }
 ```
 
 **Resume rules**:
+
 - Phase with `status: "complete"` → Skip
 - Phase with `status: "failed"` → Retry (if `pipeline.stop_on_failure` is true, ask user first)
 - Phase with `status: "pending"` or missing → Execute
 - `verify.status: "healing"` → Re-trigger implement phase, then re-verify (self-heal loop)
-- If all phases are `complete` → Run validation and report
+- If all configured phases are `complete` and `validate` is not `complete` → Run validation and report
+- If all configured phases including `validate` are `complete` → Report success without re-running phases
 
 If no state file exists, fall back to artifact detection:
+
 - `spec.md` exists → Specify is done, start from next incomplete phase
 - `spec.md` has `## Clarifications` section with `Autopilot Session` → Clarify is done
 - `plan.md` exists → Plan is done
 - `tasks.md` exists → Tasks are done
-- `tasks.md` has all tasks marked `[X]` or `[x]` → Implement is done, run validation only
+- `tasks.md` has all tasks marked `[X]` or `[x]` → Implement is done; run verify next if configured, otherwise run validation
 
 ### 0.4 Initialize State File
 
@@ -163,19 +174,19 @@ Create or update `FEATURE_DIR/autopilot-state.json`:
 
 ```json
 {
-  "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
-  "feature_directory": "<resolved-path>",
-  "phases": {
-    "specify":   { "status": "pending" },
-    "clarify":   { "status": "pending" },
-    "plan":      { "status": "pending" },
-    "tasks":     { "status": "pending" },
-    "implement": { "status": "pending" },
-    "verify":    { "status": "pending" },
-    "validate":  { "status": "pending" }
-  },
-  "started_at": "<ISO-timestamp>",
-  "last_updated_at": "<ISO-timestamp>"
+	"pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
+	"feature_directory": "<resolved-path>",
+	"phases": {
+		"specify": { "status": "pending" },
+		"clarify": { "status": "pending" },
+		"plan": { "status": "pending" },
+		"tasks": { "status": "pending" },
+		"implement": { "status": "pending" },
+		"verify": { "status": "pending" },
+		"validate": { "status": "pending" }
+	},
+	"started_at": "<ISO-timestamp>",
+	"last_updated_at": "<ISO-timestamp>"
 }
 ```
 
@@ -210,6 +221,7 @@ Do NOT present clarification questions to the user at this stage — the clarify
 ### 1.3 Update State
 
 Update `autopilot-state.json`:
+
 ```json
 "specify": {
   "status": "complete",
@@ -266,6 +278,7 @@ For **each** clarification question (up to `clarify.max_auto_questions`):
 5. Apply the clarification to the spec immediately (per core command's integration rules)
 
 For any **remaining ambiguities** beyond `max_auto_questions`:
+
 - Make informed guesses based on context
 - Document in the spec's Assumptions section
 
@@ -373,6 +386,7 @@ Run the `/speckit.tasks` command workflow. **Follow the core command's instructi
 - Dependency graph, parallel execution examples
 
 **Behavioral rule enforcement during task generation**:
+
 - **Goal-Driven Execution (Rule 4)**: Every task description must include explicit success criteria — not just "implement X" but "implement X, verify: {check}". Tasks without success criteria are rejected.
 - **Simplicity First (Rule 2)**: Each task must have one clear responsibility. If a task does three things, split it into three tasks. No speculative additions beyond what the spec/plan requires.
 - **Surgical Changes (Rule 3)**: Task descriptions must specify exact file paths. No vague "update related files" tasks. Every changed line must trace to the spec.
@@ -394,6 +408,7 @@ These rules apply when generating tasks. They are **non-negotiable** in autopilo
 #### Pillar 1: Unit Tests
 
 Required for every task that:
+
 - Creates or modifies a function, method, class, or component
 - Implements business logic, validation, or data transformation
 - Creates a utility, helper, or service method
@@ -402,6 +417,7 @@ Required for every task that:
 #### Pillar 2: Integration Tests
 
 Required for every task that:
+
 - Connects to a database or external data store
 - Creates or modifies an API endpoint
 - Integrates with an external service or API
@@ -416,18 +432,18 @@ Self-validation answers the question: "After this task is implemented, how can t
 
 **Self-validation techniques** (at least ONE per implementation task, choose the most appropriate):
 
-| Technique | When to Use | Example |
-|-----------|-------------|---------|
-| **Logging** | Any task that processes data, handles requests, or performs transformations | `logger.info("Order created", {id, total, items_count});` — autopilot checks log output contains expected values |
-| **Smoke test** | API endpoints, services, CLI commands, UI components | `curl -f http://localhost:3000/api/health || exit 1` — autopilot runs and checks exit code |
-| **Assertion check** | Business logic, calculations, data transformations | `assert(user.age >= 0, "Age must be non-negative")` — autopilot runs assertions |
-| **Build verification** | New modules, components, configurations | `npm run build && npm run typecheck` — autopilot confirms zero errors |
-| **Schema/file validation** | Data models, config files, migrations | `npx prisma validate && npx prisma migrate status` — autopilot confirms schema is valid |
-| **Health endpoint** | Services, APIs, servers | `GET /health` returns `{status: "ok", version: "..."}` — autopilot calls and verifies response |
-| **Dry-run / preview** | Destructive or complex operations | `--dry-run` flag that outputs what would happen without executing — autopilot checks output |
-| **Idempotency check** | State mutations, database writes | Run twice, verify output/state is identical — autopilot detects drift |
-| **Contract assertion** | APIs, integrations | Response matches expected JSON schema — autopilot validates schema |
-| **Snapshot comparison** | Output generation, reports, templates | Compare output against golden snapshot — autopilot detects deviations |
+| Technique                  | When to Use                                                                 | Example                                                                                                          |
+| -------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --- | --------------------------------------------- |
+| **Logging**                | Any task that processes data, handles requests, or performs transformations | `logger.info("Order created", {id, total, items_count});` — autopilot checks log output contains expected values |
+| **Smoke test**             | API endpoints, services, CLI commands, UI components                        | `curl -f http://localhost:3000/api/health                                                                        |     | exit 1` — autopilot runs and checks exit code |
+| **Assertion check**        | Business logic, calculations, data transformations                          | `assert(user.age >= 0, "Age must be non-negative")` — autopilot runs assertions                                  |
+| **Build verification**     | New modules, components, configurations                                     | `npm run build && npm run typecheck` — autopilot confirms zero errors                                            |
+| **Schema/file validation** | Data models, config files, migrations                                       | `npx prisma validate && npx prisma migrate status` — autopilot confirms schema is valid                          |
+| **Health endpoint**        | Services, APIs, servers                                                     | `GET /health` returns `{status: "ok", version: "..."}` — autopilot calls and verifies response                   |
+| **Dry-run / preview**      | Destructive or complex operations                                           | `--dry-run` flag that outputs what would happen without executing — autopilot checks output                      |
+| **Idempotency check**      | State mutations, database writes                                            | Run twice, verify output/state is identical — autopilot detects drift                                            |
+| **Contract assertion**     | APIs, integrations                                                          | Response matches expected JSON schema — autopilot validates schema                                               |
+| **Snapshot comparison**    | Output generation, reports, templates                                       | Compare output against golden snapshot — autopilot detects deviations                                            |
 
 **Self-validation task format**:
 
@@ -465,6 +481,7 @@ Self-validation answers the question: "After this task is implemented, how can t
 4. Integration test tasks (after the components they integrate)
 
 **Complete task format per implementation unit**:
+
 ```text
 - [ ] T{NNN} [P] [US{N}] Write unit tests for {Component} in {test-path}
   - Test: {scenario 1}
@@ -586,9 +603,22 @@ Run the `/speckit.implement` command workflow. **Follow the core command's instr
 4. If any self-validation fails:
    - Report the failures with details
    - Update state with failure information
-   - Do NOT proceed to validate phase — let the user investigate
 
-### 5.3 Update State
+- Do NOT proceed to the automatic validate pass or verify — let the user investigate
+
+### 5.3 Autopilot Gate: Run Validate Immediately After Implement
+
+After self-validation passes, invoke `/speckit.autopilot.validate` immediately.
+
+- This post-implementation validate pass is **mandatory after every successful implement cycle**, including verify-triggered self-heal iterations.
+- Treat it as a quality gate before runtime verification.
+- During this pass, post-verify checks may be skipped if verify has not run yet. That is expected.
+- If validate reports failures:
+  - Set `validate.status: "failed"` with failure details.
+  - Stop the pipeline before Step 6.
+  - Re-running the autopilot resumes from the failed validation state.
+
+### 5.4 Update State
 
 ```json
 "implement": {
@@ -603,7 +633,7 @@ Run the `/speckit.implement` command workflow. **Follow the core command's instr
 }
 ```
 
-### 5.4 Report
+### 5.5 Report
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -624,7 +654,7 @@ Results Log:      {path}
 
 **Skip if** `verify` is not in `pipeline.phases` or state shows `complete`.
 
-**Prerequisite**: The implement phase must have status `complete` before verify runs.
+**Prerequisite**: The implement phase must have status `complete` and the most recent post-implementation validate pass must have succeeded before verify runs.
 
 ### 6.1 Loop Controller
 
@@ -636,6 +666,7 @@ The verify phase may execute multiple times (each time followed by a re-implemen
 On first entry, iteration is 0. Each self-heal cycle increments it by 1.
 
 If `verify.iteration >= verify.max_iterations`:
+
 - Report: "Maximum verify iterations ({N}) reached. Remaining issues require manual investigation."
 - Set `verify.status: "failed"` and continue to validate phase.
 - If `pipeline.stop_on_failure` is true, halt the pipeline.
@@ -655,17 +686,19 @@ Run the `/speckit.autopilot.verify` command workflow. **Follow its instructions 
 ### 6.3 Self-Heal Decision
 
 **If verify verdict is `healthy`**:
+
 - Verify command has already cleaned up (stopped the app).
 - Proceed to Step 7 (Validate).
 
 **If verify verdict is `failed`, `degraded`, or `startup_failed`**:
+
 - The verify command has generated fix tasks in `tasks.md`.
 - Check: `verify.iteration < verify.max_iterations` AND `verify.auto_heal` is `true`.
 - If both conditions met:
   1. Set `implement.status: "pending"` in state (to allow re-execution).
   2. Set `implement.tasks_completed` to the count of tasks completed BEFORE the fix tasks.
   3. Increment `verify.iteration`.
-  4. Return to Step 5 (IMPLEMENT) — the core implement command will detect the new unchecked fix tasks and execute them.
+  4. Return to Step 5 (IMPLEMENT) — the core implement command will detect the new unchecked fix tasks and execute them, then the automatic post-implementation validate gate runs again before verify retries.
 - If conditions not met:
   - Set `verify.status: "failed"`.
   - Continue to Step 7 (Validate) which will report the failures.
@@ -711,19 +744,20 @@ Results Log:       {path}
 
 ---
 
-## Step 7: VALIDATE (Built-In)
+## Step 7: VALIDATE (Built-In Final Pass)
 
-After all pipeline phases complete, run a final validation.
+Run a final validation after verify finishes, or immediately after implement when verify is not configured. This final pass re-runs validate so post-verify checks are included in the terminal pipeline result.
 
 ### 7.1 Validate Artifacts Exist
 
-| Artifact | Required | Phase |
-|----------|----------|-------|
-| `spec.md` | Yes | Specify |
-| `plan.md` | Yes | Plan |
-| `tasks.md` | Yes | Tasks |
+| Artifact   | Required | Phase   |
+| ---------- | -------- | ------- |
+| `spec.md`  | Yes      | Specify |
+| `plan.md`  | Yes      | Plan    |
+| `tasks.md` | Yes      | Tasks   |
 
 Optional artifacts (warn if expected but missing):
+
 - `data-model.md` — Expected if feature involves data
 - `contracts/` — Expected if feature has external interfaces
 - `research.md` — Expected if plan had NEEDS CLARIFICATION items
@@ -732,6 +766,7 @@ Optional artifacts (warn if expected but missing):
 ### 7.2 Validate Test Coverage and Self-Validation in Tasks
 
 Re-run the validation from Step 4.4 and confirm:
+
 - Unit test tasks exist for implementation tasks
 - Integration test tasks exist for integration-point tasks
 - Self-validation tasks exist for implementation tasks
@@ -741,6 +776,7 @@ Re-run the validation from Step 4.4 and confirm:
 ### 7.3 Validate Implementation Results (if implement phase ran)
 
 If the implement phase completed (state shows `implement.status: "complete"`):
+
 - All tasks in `tasks.md` are marked `[X]` or `[x]`
 - Self-validation results log exists and all checks passed
 - Test suite passed
@@ -815,6 +851,7 @@ If the implement phase completed (state shows `implement.status: "complete"`):
 ### Partial Failure
 
 If a phase partially completes (e.g., spec written but validation failed):
+
 - The state file records the partial completion
 - Re-running will detect partial state and retry the phase
 - Artifacts from the partial run are preserved (not deleted)
@@ -829,90 +866,105 @@ If a phase partially completes (e.g., spec written but validation failed):
 
 ```json
 {
-  "pipeline_id": "string — autopilot-YYYYMMDD-HHMMSS",
-  "feature_directory": "string — relative path to feature dir",
-  "started_at": "ISO 8601 timestamp",
-  "last_updated_at": "ISO 8601 timestamp",
-  "phases": {
-    "specify": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "spec_file": "string or null",
-      "clarifications_auto_resolved": "number"
-    },
-    "clarify": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "questions_answered": "number",
-      "categories_addressed": ["string"]
-    },
-    "plan": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "artifacts": ["string"],
-      "test_framework": "string or null"
-    },
-    "tasks": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "total_tasks": "number",
-      "unit_test_tasks": "number",
-      "integration_test_tasks": "number",
-      "self_validation_tasks": "number",
-      "validation_passed": "boolean"
-    },
-    "implement": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "tasks_total": "number",
-      "tasks_completed": "number",
-      "tests_passed": "boolean",
-      "self_validation_passed": "boolean",
-      "validation_results_path": "string or null"
-    },
-    "verify": {
-      "status": "pending | running | healthy | degraded | failed | healing | complete",
-      "iteration": "number",
-      "max_iterations": "number",
-      "verdict": "healthy | degraded | failed | startup_failed or null",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "checks": {
-        "startup": { "status": "pass|fail", "command": "string", "ready_after_seconds": "number or null" },
-        "log_analysis": { "errors": "number", "warnings": "number", "error_patterns": ["string"] },
-        "endpoints": [
-          { "url": "string", "method": "string", "expected_status": "number", "actual_status": "number", "response_time_ms": "number", "result": "pass|warn|fail" }
-        ],
-        "process": { "running": "boolean" }
-      },
-      "diagnosis": [
-        {
-          "issue": "string",
-          "severity": "critical|major|minor",
-          "affected": "string",
-          "root_cause": "string",
-          "related_task": "string",
-          "suggested_fix": "string"
-        }
-      ],
-      "fix_tasks_created_total": "number",
-      "iterations_used": "number",
-      "results_log": "string or null"
-    },
-    "validate": {
-      "status": "pending | running | complete | failed",
-      "completed_at": "ISO 8601 or null",
-      "error": "string or null",
-      "artifacts_valid": "boolean",
-      "test_coverage_valid": "boolean",
-      "self_validation_valid": "boolean",
-      "warnings": ["string"]
-    }
-  }
+	"pipeline_id": "string — autopilot-YYYYMMDD-HHMMSS",
+	"feature_directory": "string — relative path to feature dir",
+	"started_at": "ISO 8601 timestamp",
+	"last_updated_at": "ISO 8601 timestamp",
+	"phases": {
+		"specify": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"spec_file": "string or null",
+			"clarifications_auto_resolved": "number"
+		},
+		"clarify": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"questions_answered": "number",
+			"categories_addressed": ["string"]
+		},
+		"plan": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"artifacts": ["string"],
+			"test_framework": "string or null"
+		},
+		"tasks": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"total_tasks": "number",
+			"unit_test_tasks": "number",
+			"integration_test_tasks": "number",
+			"self_validation_tasks": "number",
+			"validation_passed": "boolean"
+		},
+		"implement": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"tasks_total": "number",
+			"tasks_completed": "number",
+			"tests_passed": "boolean",
+			"self_validation_passed": "boolean",
+			"validation_results_path": "string or null"
+		},
+		"verify": {
+			"status": "pending | running | healthy | degraded | failed | healing | complete",
+			"iteration": "number",
+			"max_iterations": "number",
+			"verdict": "healthy | degraded | failed | startup_failed or null",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"checks": {
+				"startup": {
+					"status": "pass|fail",
+					"command": "string",
+					"ready_after_seconds": "number or null"
+				},
+				"log_analysis": {
+					"errors": "number",
+					"warnings": "number",
+					"error_patterns": ["string"]
+				},
+				"endpoints": [
+					{
+						"url": "string",
+						"method": "string",
+						"expected_status": "number",
+						"actual_status": "number",
+						"response_time_ms": "number",
+						"result": "pass|warn|fail"
+					}
+				],
+				"process": { "running": "boolean" }
+			},
+			"diagnosis": [
+				{
+					"issue": "string",
+					"severity": "critical|major|minor",
+					"affected": "string",
+					"root_cause": "string",
+					"related_task": "string",
+					"suggested_fix": "string"
+				}
+			],
+			"fix_tasks_created_total": "number",
+			"iterations_used": "number",
+			"results_log": "string or null"
+		},
+		"validate": {
+			"status": "pending | running | complete | failed",
+			"completed_at": "ISO 8601 or null",
+			"error": "string or null",
+			"artifacts_valid": "boolean",
+			"test_coverage_valid": "boolean",
+			"self_validation_valid": "boolean",
+			"warnings": ["string"]
+		}
+	}
 }
 ```

@@ -1,4 +1,4 @@
-Validate that generated tasks have proper unit tests, integration tests, self-validation coverage, and post-implementation verification. Can be run at any time to verify task quality.
+Validate that generated tasks have proper unit tests, integration tests, self-validation coverage, and post-implementation verification. This runs automatically after each successful implement phase in autopilot and can also be run manually at any time.
 
 ## Steps
 
@@ -22,17 +22,18 @@ No tasks.md found. Run the pipeline first to generate tasks.
 
 Parse every task line (matching `- [ ] T{NNN}` or `- [x] T{NNN}` or `- [X] T{NNN}`). For each task, classify it:
 
-| Category | Match Pattern | Examples |
-|----------|---------------|---------|
-| Unit Test | Contains "unit test" (case-insensitive) | "Write unit tests for UserService" |
-| Integration Test | Contains "integration test" (case-insensitive) | "Write integration tests for auth flow" |
-| Self-Validation | Contains "self-validation" or "self validation" (case-insensitive) | "Add self-validation for OrderService" |
-| Test (Generic) | Contains "test" but not "unit" or "integration" or "self-validation" | "Run test suite" |
-| Implementation | Contains "Implement", "Create", "Build", "Add", "Write" AND is NOT a test/validation task | "Implement UserService" |
-| Setup/Config | Infrastructure, configuration, initialization | "Create project structure" |
-| Verification | Contains "Verify", "Run", "Check", "Ensure" AND is NOT a self-validation task | "Run full test suite" |
+| Category         | Match Pattern                                                                             | Examples                                |
+| ---------------- | ----------------------------------------------------------------------------------------- | --------------------------------------- |
+| Unit Test        | Contains "unit test" (case-insensitive)                                                   | "Write unit tests for UserService"      |
+| Integration Test | Contains "integration test" (case-insensitive)                                            | "Write integration tests for auth flow" |
+| Self-Validation  | Contains "self-validation" or "self validation" (case-insensitive)                        | "Add self-validation for OrderService"  |
+| Test (Generic)   | Contains "test" but not "unit" or "integration" or "self-validation"                      | "Run test suite"                        |
+| Implementation   | Contains "Implement", "Create", "Build", "Add", "Write" AND is NOT a test/validation task | "Implement UserService"                 |
+| Setup/Config     | Infrastructure, configuration, initialization                                             | "Create project structure"              |
+| Verification     | Contains "Verify", "Run", "Check", "Ensure" AND is NOT a self-validation task             | "Run full test suite"                   |
 
 Also extract for each task:
+
 - Task ID (T001, T002, etc.)
 - User story label ([US1], [US2], etc.) if present
 - File path mentioned in the description
@@ -100,6 +101,7 @@ For each user story with implementation tasks, verify there's at least one self-
 #### Check 8: Self-Validation Technique and Success Criteria
 
 For every self-validation task, verify it specifies:
+
 1. A **technique** (logging, smoke, assertion, build, schema, health, dry-run, idempotency, contract, or snapshot)
 2. A **validation** check (what to execute)
 3. A **success criteria** (what "pass" looks like)
@@ -248,7 +250,7 @@ If the user wants to fix issues, apply these fixes:
    - Database/data model → schema validation
    - Service/server → health endpoint
    - Configuration → build verification
-   Include technique, validation, and success criteria. Re-number.
+     Include technique, validation, and success criteria. Re-number.
 
 8. **Incomplete self-validation (Check 8)**: Fill in missing technique/validation/success criteria.
 

@@ -1,66 +1,66 @@
-schema_version: "1.0"
+schema_version: '1.0'
 
 extension:
-  id: "autopilot"
-  name: "Spec Kit Autopilot"
-  version: "1.2.0"
-  description: "Automated pipeline orchestrating specify, clarify, plan, tasks, implement, and verify with auto-answered clarifications, enforced test coverage, self-validating tasks, runtime health checks, and self-healing"
-  author: "Gurkan Yilmaz"
-  repository: "https://github.com/grknylmz/github-speckit-autopilot"
-  license: "MIT"
+  id: 'autopilot'
+  name: 'Spec Kit Autopilot'
+  version: '1.2.0'
+  description: 'Automated pipeline orchestrating specify, clarify, plan, tasks, implement, verify, and validate with auto-answered clarifications, enforced test coverage, self-validating tasks, runtime health checks, and self-healing'
+  author: 'Gurkan Yilmaz'
+  repository: 'https://github.com/grknylmz/github-speckit-autopilot'
+  license: 'MIT'
 
 requires:
-  speckit_version: ">=0.1.0"
+  speckit_version: '>=0.1.0'
   commands:
-    - "speckit.specify"
-    - "speckit.clarify"
-    - "speckit.plan"
-    - "speckit.tasks"
-    - "speckit.implement"
+    - 'speckit.specify'
+    - 'speckit.clarify'
+    - 'speckit.plan'
+    - 'speckit.tasks'
+    - 'speckit.implement'
 
 provides:
   commands:
-    - name: "speckit.autopilot.run"
-      file: "commands/speckit.autopilot.run.md"
-      description: "Orchestrate the full pipeline: specify → clarify (auto) → plan → tasks with enforced tests"
+    - name: 'speckit.autopilot.run'
+      file: 'commands/speckit.autopilot.run.md'
+      description: 'Orchestrate the full pipeline: specify → clarify (auto) → plan → tasks → implement → verify → validate'
       aliases:
-        - "speckit.autopilot.start"
+        - 'speckit.autopilot.start'
 
-    - name: "speckit.autopilot.status"
-      file: "commands/speckit.autopilot.status.md"
-      description: "Check pipeline progress from the state file and artifact scan"
+    - name: 'speckit.autopilot.status'
+      file: 'commands/speckit.autopilot.status.md'
+      description: 'Check pipeline progress from the state file and artifact scan'
 
-    - name: "speckit.autopilot.validate"
-      file: "commands/speckit.autopilot.validate.md"
-      description: "Validate that generated tasks have proper unit tests, integration tests, self-validation, and follow behavioral guidelines"
+    - name: 'speckit.autopilot.validate'
+      file: 'commands/speckit.autopilot.validate.md'
+      description: 'Validate that generated tasks have proper unit tests, integration tests, self-validation, and follow behavioral guidelines'
 
-    - name: "speckit.autopilot.verify"
-      file: "commands/speckit.autopilot.verify.md"
-      description: "Verify the built application by starting it, checking logs, hitting endpoints, diagnosing issues, and self-healing with fix tasks"
+    - name: 'speckit.autopilot.verify'
+      file: 'commands/speckit.autopilot.verify.md'
+      description: 'Verify the built application by starting it, checking logs, hitting endpoints, diagnosing issues, and self-healing with fix tasks'
 
-    - name: "speckit.autopilot.constitution"
-      file: "commands/speckit.autopilot.constitution.md"
-      description: "Merge autopilot behavioral guidelines (think-before-code, simplicity, surgical changes, goal-driven) into the project constitution"
+    - name: 'speckit.autopilot.constitution'
+      file: 'commands/speckit.autopilot.constitution.md'
+      description: 'Merge autopilot behavioral guidelines (think-before-code, simplicity, surgical changes, goal-driven) into the project constitution'
 
   config:
-    - name: "autopilot-config.yml"
-      template: "config-template.yml"
-      description: "Autopilot configuration for test enforcement, clarification, and pipeline behavior"
+    - name: 'autopilot-config.yml'
+      template: 'config-template.yml'
+      description: 'Autopilot configuration for test enforcement, clarification, and pipeline behavior'
       required: false
 
 tags:
-  - "autopilot"
-  - "automation"
-  - "pipeline"
-  - "testing"
-  - "workflow"
+  - 'autopilot'
+  - 'automation'
+  - 'pipeline'
+  - 'testing'
+  - 'workflow'
 
 defaults:
   test_enforcement:
     unit_tests: true
     integration_tests: true
     enforce_for_all_tasks: true
-    test_framework: "auto-detect"
+    test_framework: 'auto-detect'
     coverage_target: 80
   self_validation:
     enabled: true
@@ -90,6 +90,7 @@ defaults:
       - tasks
       - implement
       - verify
+      - validate
   verify:
     max_iterations: 5
     startup_timeout_seconds: 30

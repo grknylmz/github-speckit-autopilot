@@ -1,8 +1,9 @@
-Orchestrate the full spec-kit autopilot pipeline: specify → clarify (auto-answer) → plan → tasks → implement → verify (runtime health + self-heal) → validate.
+Orchestrate the full spec-kit autopilot pipeline: specify → clarify (auto-answer) → plan → tasks → implement → validate → verify (runtime health + self-heal) → validate.
 
 The user will provide a feature description below. If no feature description is provided, check for an existing pipeline state and resume from the last incomplete phase.
 
 **Three mandatory pillars for every task**:
+
 1. **Unit tests** — Verify individual functions/methods work in isolation
 2. **Integration tests** — Verify components work together correctly
 3. **Self-validation** — Each feature must include a runnable check the system executes to confirm it works without human intervention
@@ -14,6 +15,7 @@ The user will provide a feature description below. If no feature description is 
 Check if the constitution file (`.specify/constitution.md` or `/memory/constitution.md`) contains `<!-- AUTOPILOT-BEHAVIORAL-GUIDELINES -->`.
 
 If not present, merge the four behavioral rules into the constitution:
+
 - **Think Before Coding** — State assumptions, surface tradeoffs, ask before assuming
 - **Simplicity First** — Minimum code, no speculative features, no over-abstraction
 - **Surgical Changes** — Touch only what you must, match existing style
@@ -23,7 +25,7 @@ If not present, merge the four behavioral rules into the constitution:
 
 Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Key settings:
 
-- `pipeline.phases` — Phases to run (default: `[specify, clarify, plan, tasks, implement, verify]`)
+- `pipeline.phases` — Phases to run (default: `[specify, clarify, plan, tasks, implement, verify, validate]`). If `implement` is present, `validate` must remain the terminal phase.
 - `pipeline.stop_on_failure` — Halt on failure (default: `true`)
 - `clarify.auto_answer` — Auto-answer questions (default: `true`)
 - `test_enforcement.coverage_target` — Minimum coverage % (default: 80)
@@ -50,11 +52,12 @@ If `autopilot-state.json` exists, determine which phases completed:
 - `verify.status: "healing"` → Re-trigger implement, then re-verify
 
 Artifact detection fallback (if no state file):
+
 - `spec.md` exists → Specify done
 - `spec.md` has `## Clarifications` with "Autopilot Session" → Clarify done
 - `plan.md` exists → Plan done
 - `tasks.md` exists → Tasks done
-- All tasks marked `[X]` or `[x]` → Implement done
+- All tasks marked `[X]` or `[x]` → Implement done; run verify next if configured, otherwise run validate
 
 ### 0.4 Initialize State File
 
@@ -62,19 +65,19 @@ Create or update `FEATURE_DIR/autopilot-state.json`:
 
 ```json
 {
-  "pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
-  "feature_directory": "<resolved-path>",
-  "phases": {
-    "specify":   { "status": "pending" },
-    "clarify":   { "status": "pending" },
-    "plan":      { "status": "pending" },
-    "tasks":     { "status": "pending" },
-    "implement": { "status": "pending" },
-    "verify":    { "status": "pending" },
-    "validate":  { "status": "pending" }
-  },
-  "started_at": "<ISO-timestamp>",
-  "last_updated_at": "<ISO-timestamp>"
+	"pipeline_id": "autopilot-YYYYMMDD-HHMMSS",
+	"feature_directory": "<resolved-path>",
+	"phases": {
+		"specify": { "status": "pending" },
+		"clarify": { "status": "pending" },
+		"plan": { "status": "pending" },
+		"tasks": { "status": "pending" },
+		"implement": { "status": "pending" },
+		"verify": { "status": "pending" },
+		"validate": { "status": "pending" }
+	},
+	"started_at": "<ISO-timestamp>",
+	"last_updated_at": "<ISO-timestamp>"
 }
 ```
 
@@ -103,6 +106,7 @@ Generate a short feature name (kebab-case) for the directory.
 ### 1.2 Auto-Resolve NEEDS CLARIFICATION
 
 If any `[NEEDS CLARIFICATION: ...]` markers remain in the spec:
+
 - Resolve each using context and best practices
 - Replace with concrete decisions
 - Document resolutions in the Assumptions section
@@ -139,6 +143,7 @@ Clarifications auto-resolved: {N}
 ### 2.1 Scan for Ambiguities
 
 Read the spec and perform a structured ambiguity scan across:
+
 - Functional scope (boundaries, edge cases)
 - Data model (attributes, constraints, relationships)
 - API contracts (status codes, error handling, pagination)
@@ -159,6 +164,7 @@ For each ambiguity (up to `clarify.max_auto_questions`, default 5):
 5. Apply the clarification to the spec
 
 For remaining ambiguities beyond `max_auto_questions`:
+
 - Make informed guesses based on context
 - Document in spec's Assumptions section
 
@@ -201,6 +207,7 @@ Generate `FEATURE_DIR/plan.md` with:
 ### 3.2 Test Strategy Injection
 
 After the plan is generated, ensure:
+
 - Test framework and strategy are documented in plan.md
 - Data model includes validation test scenarios
 - Contracts include test expectations
@@ -225,6 +232,7 @@ Create `FEATURE_DIR/tasks.md` with tasks organized by user story. Each task foll
 ```
 
 **Behavioral rules during generation**:
+
 - **Goal-Driven**: Every task has explicit success criteria
 - **Simplicity**: One responsibility per task
 - **Surgical**: Exact file paths specified
@@ -320,7 +328,16 @@ Summary: {N}/{M} passed
 
 If any self-validation fails, report failures and stop.
 
-### 5.3 Update State and Report
+### 5.3 Automatic Post-Implementation Validate Pass
+
+After self-validation passes, run `/speckit.autopilot.validate` automatically.
+
+- This validate pass is mandatory after every successful implement cycle, including self-heal re-implementation.
+- Treat it as a gate before Step 6.
+- Post-verify checks may be skipped during this pass if verify has not run yet.
+- If validation fails, stop the pipeline and resume from validation on the next run.
+
+### 5.4 Update State and Report
 
 ---
 
@@ -328,13 +345,14 @@ If any self-validation fails, report failures and stop.
 
 **Skip if** `verify` not in `pipeline.phases` or state shows `complete`.
 
-**Prerequisite**: Implement phase must be complete.
+**Prerequisite**: Implement phase must be complete and the latest automatic validate pass must have succeeded.
 
 ### 6.1 Loop Controller
 
 Track verify iteration in state. Max iterations from config (default: 5).
 
 If `verify.iteration >= verify.max_iterations`:
+
 - Report: "Maximum verify iterations reached."
 - Set `verify.status: "failed"`.
 
@@ -364,7 +382,7 @@ If `verify.iteration >= verify.max_iterations`:
    - Append to tasks.md in new "Verify Fix Tasks — Iteration {N}" section
    - Re-number all task IDs
    - Set `implement.status: "pending"` to allow re-implementation
-   - Increment iteration and return to Step 5
+   - Increment iteration and return to Step 5, which must finish with another automatic validate pass before verify retries
 
 8. **Cleanup** (if healthy):
    - Stop application
@@ -377,6 +395,8 @@ If `verify.iteration >= verify.max_iterations`:
 
 ## Step 7: VALIDATE
 
+Run a final validate pass after verify finishes, or immediately after implement when verify is skipped, so the final pipeline result includes all post-verify checks.
+
 ### 7.1 Validate Artifacts Exist
 
 Required: `spec.md`, `plan.md`, `tasks.md`
@@ -385,6 +405,7 @@ Optional (warn if missing): `data-model.md`, `contracts/`, `research.md`, `check
 ### 7.2 Validate Test Coverage
 
 Re-run task validation:
+
 - Unit test tasks exist for implementation tasks
 - Integration test tasks exist
 - Self-validation tasks exist with technique + success criteria
@@ -437,11 +458,13 @@ Re-run task validation:
 ## Error Handling
 
 On phase failure:
+
 1. Update `autopilot-state.json` with `"status": "failed"` and error message
 2. Report which phase failed, what succeeded, and the specific error
 3. Re-attaching this prompt resumes from the failed phase
 
 Recovery options:
+
 - Re-attach this prompt — Resume from failed phase (state preserved)
 - Attach specific phase prompt — Run just that phase manually
 - Delete `autopilot-state.json` — Start from scratch

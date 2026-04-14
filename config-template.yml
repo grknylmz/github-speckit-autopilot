@@ -18,7 +18,7 @@ test_enforcement:
 
   # Test framework — set to auto-detect or specify explicitly
   # Options: auto-detect, jest, vitest, pytest, junit, go-test, xunit, rspec, minitest
-  test_framework: "auto-detect"
+  test_framework: 'auto-detect'
 
   # Minimum test coverage target (percentage) — enforced in final phase
   coverage_target: 80
@@ -35,16 +35,16 @@ self_validation:
   # The most appropriate technique is chosen per task automatically.
   # Remove techniques you don't want used.
   techniques:
-    - logging           # Log structured output; autopilot checks log contents
-    - smoke             # Quick runtime check (curl, health endpoint, etc.)
-    - assertion         # Runtime assertions in code (assert(), expect(), etc.)
-    - build             # Build/typecheck/lint passes with zero errors
-    - schema            # Schema/file validation (prisma validate, JSON schema, etc.)
-    - health            # Health/readiness endpoint returns expected payload
-    - dry-run           # --dry-run flag outputs what would happen
-    - idempotency       # Run twice, verify identical output/state
-    - contract          # Response matches expected JSON/protobuf schema
-    - snapshot          # Output compared against golden snapshot
+    - logging # Log structured output; autopilot checks log contents
+    - smoke # Quick runtime check (curl, health endpoint, etc.)
+    - assertion # Runtime assertions in code (assert(), expect(), etc.)
+    - build # Build/typecheck/lint passes with zero errors
+    - schema # Schema/file validation (prisma validate, JSON schema, etc.)
+    - health # Health/readiness endpoint returns expected payload
+    - dry-run # --dry-run flag outputs what would happen
+    - idempotency # Run twice, verify identical output/state
+    - contract # Response matches expected JSON/protobuf schema
+    - snapshot # Output compared against golden snapshot
 
   # Generate a validation-results.log in the feature directory
   # when self-validation tasks are executed
@@ -77,14 +77,15 @@ pipeline:
   verbose_logging: true
 
   # Ordered list of phases to execute.
+  # If `implement` is included, `validate` should remain the terminal phase.
   # Remove phases to skip them. Common configurations:
-  #   Full pipeline:       [specify, clarify, plan, tasks, implement, verify]
+  #   Full pipeline:       [specify, clarify, plan, tasks, implement, verify, validate]
   #   Plan only:           [specify, clarify, plan, tasks]
-  #   Skip clarify:        [specify, plan, tasks, implement, verify]
+  #   Skip clarify:        [specify, plan, tasks, implement, verify, validate]
   #   Only plan + tasks:   [plan, tasks]
   #   Only tasks:          [tasks]
-  #   Implement only:      [implement]
-  #   Implement + verify:  [implement, verify]
+  #   Implement only:      [implement, validate]
+  #   Implement + verify:  [implement, verify, validate]
   phases:
     - specify
     - clarify
@@ -92,6 +93,7 @@ pipeline:
     - tasks
     - implement
     - verify
+    - validate
 
 # ─── Verify & Self-Heal ────────────────────────────────────────────
 # Controls runtime verification after implementation.
