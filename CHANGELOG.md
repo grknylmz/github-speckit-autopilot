@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate` now runs automatically after every successful implement pass and remains the terminal phase for pipelines that include `implement`
 - Removed the deprecated `speckit.autopilot.start` alias; `speckit.autopilot.run` is now the only supported entrypoint
 - GitHub Copilot `speckit.autopilot.run` instructions now treat the extension command files in `commands/` as the source of truth
+- `speckit.autopilot.run` now bootstraps `autopilot-state.json` at invocation time and persists it immediately when the feature directory becomes available
 
 ## [1.3.0] - 2026-04-13
 

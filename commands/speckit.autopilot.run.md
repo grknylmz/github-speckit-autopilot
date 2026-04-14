@@ -114,6 +114,14 @@ Read `.specify/extensions/autopilot/autopilot-config.yml` if it exists. Merge wi
 
 ### 0.2 Detect or Create Feature Directory
 
+Immediately when `/speckit.autopilot.run` starts, generate bootstrap metadata for the pipeline run:
+
+- `pipeline_id` = `autopilot-YYYYMMDD-HHMMSS`
+- `started_at` = current ISO timestamp
+- All configured phases initialized to `pending`
+
+Persist this bootstrap state **as soon as a feature directory is available**. If `FEATURE_DIR` already exists, write the state file before Phase 1 begins. If `FEATURE_DIR` does not exist yet, carry the bootstrap metadata forward and write it immediately after `/speckit.specify` creates the directory.
+
 Run `{SCRIPT}` from repo root and parse JSON payload for `FEATURE_DIR` and `FEATURE_SPEC`.
 
 **If the script returns valid paths** (feature already exists):
@@ -170,7 +178,12 @@ If no state file exists, fall back to artifact detection:
 
 ### 0.4 Initialize State File
 
-Create or update `FEATURE_DIR/autopilot-state.json`:
+Create or update `FEATURE_DIR/autopilot-state.json` immediately once `FEATURE_DIR` is known:
+
+- **Existing feature directory at startup**: write the state file before entering Phase 1 so resume/status commands have a concrete source of truth from the start of the run.
+- **New feature directory created by `/speckit.specify`**: write the state file immediately after Phase 1 returns the new `FEATURE_DIR`, before clarify or any later phase begins.
+
+Initial contents:
 
 ```json
 {
@@ -190,7 +203,7 @@ Create or update `FEATURE_DIR/autopilot-state.json`:
 }
 ```
 
-Update the state file **after each phase completes** (success or failure).
+When a phase begins, set that phase to `"status": "running"` and refresh `last_updated_at`. Update the state file again **after each phase completes** (success or failure).
 
 ---
 
@@ -207,6 +220,8 @@ Run the `/speckit.specify` command workflow with the user's feature description 
 - Specification quality validation
 - Checklist generation
 - Extension hook checking
+
+If this is a brand-new feature and `autopilot-state.json` could not be written during Step 0.4 because `FEATURE_DIR` did not exist yet, write the bootstrap state file immediately after `/speckit.specify` returns the new feature directory and before any autopilot post-processing continues.
 
 ### 1.2 Autopilot Override: Auto-Resolve NEEDS CLARIFICATION
 

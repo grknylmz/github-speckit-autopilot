@@ -140,4 +140,4 @@ Within each user story, tasks follow this order:
 
 ## State File
 
-Pipeline state is tracked in `autopilot-state.json` with phase statuses: `pending`, `running`, `complete`, `failed`. The verify phase has additional statuses: `healthy`, `degraded`, `healing`.
+Generate the bootstrap `autopilot-state.json` immediately when `/speckit.autopilot.run` starts. If the feature directory already exists, write it at once; if the run is creating a brand-new feature, write it immediately after `/speckit.specify` creates the feature directory. Pipeline state is then tracked in `autopilot-state.json` with phase statuses: `pending`, `running`, `complete`, `failed`. The verify phase has additional statuses: `healthy`, `degraded`, `healing`.

@@ -12,7 +12,7 @@ A [spec-kit](https://github.com/github/spec-kit) extension that provides an auto
 - **Runtime verification**: Starts the built application, checks logs, hits HTTP endpoints, and validates everything is running
 - **Automatic validation**: Runs `/speckit.autopilot.validate` automatically after every successful implement pass and again as the final pipeline phase
 - **Self-healing loop**: When issues are found, generates fix tasks and loops back to implementation automatically (configurable max iterations)
-- **Pipeline state file**: `autopilot-state.json` tracks exact phase status for reliable resume and status checks
+- **Pipeline state file**: `autopilot-state.json` is created at run start as soon as the feature directory is known, then tracks exact phase status for reliable resume and status checks
 - **Configurable phases**: Skip phases, reorder them, or run a subset of the pipeline
 - **Validation command**: `/speckit.autopilot.validate` verifies test coverage, self-validation, and behavioral guideline compliance with auto-fix
 - **Behavioral constitution**: `/speckit.autopilot.constitution` merges coding rules (think-before-code, simplicity, surgical changes, goal-driven execution) into the project constitution
@@ -132,7 +132,7 @@ This command also runs automatically after each successful implement pass inside
 
 ### Resume a Failed Pipeline
 
-Just re-run the same command — the state file tracks exactly where to resume:
+Just re-run the same command — the state file is bootstrapped at run start and then tracks exactly where to resume:
 
 ```
 /speckit.autopilot.run
