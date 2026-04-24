@@ -2,8 +2,8 @@
 description: 'Check the current status of the autopilot pipeline using the state file and artifact scan.'
 mode: speckit.autopilot.status
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 # Autopilot Pipeline Status

@@ -2,8 +2,8 @@
 description: 'Validate that generated tasks have proper unit tests, integration tests, self-validation coverage for all implementation tasks, and post-implementation verification.'
 mode: speckit.autopilot.validate
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 # Autopilot Validation

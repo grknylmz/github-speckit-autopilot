@@ -2,8 +2,8 @@
 description: 'Merge autopilot behavioral guidelines into the project constitution. Ensures all tasks follow think-before-code, simplicity-first, surgical-changes, and goal-driven-execution principles.'
 mode: speckit.autopilot.constitution
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 # Autopilot Behavioral Constitution

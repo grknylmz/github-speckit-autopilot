@@ -73,6 +73,7 @@ Then copy the autopilot-managed files into the project root:
 Rules:
 
 - Overwrite only these autopilot-managed files.
+- Remove any CLI-generated `.github/agents/speckit.autopilot.*.md` command shims. The managed Copilot custom agents are the `*.agent.md` files listed above.
 - Do not modify unrelated files under `.github/`.
 - Preserve file contents exactly.
 

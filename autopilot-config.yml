@@ -1,0 +1,53 @@
+# Spec Kit Autopilot Configuration
+# Installed default configuration. Customize this file in the installed extension
+# directory: .specify/extensions/autopilot/autopilot-config.yml
+
+# These settings control how tests are enforced in generated tasks.
+# In autopilot mode, test enforcement is always active.
+
+test_enforcement:
+  unit_tests: true
+  integration_tests: true
+  enforce_for_all_tasks: true
+  test_framework: 'auto-detect'
+  coverage_target: 80
+
+self_validation:
+  enabled: true
+  techniques:
+    - logging
+    - smoke
+    - assertion
+    - build
+    - schema
+    - health
+    - dry-run
+    - idempotency
+    - contract
+    - snapshot
+  log_results: true
+
+clarify:
+  auto_answer: true
+  use_recommended: true
+  max_auto_questions: 5
+
+pipeline:
+  stop_on_failure: true
+  verbose_logging: true
+  phases:
+    - specify
+    - clarify
+    - plan
+    - tasks
+    - implement
+    - verify
+    - validate
+
+verify:
+  enabled: true
+  max_iterations: 5
+  startup_timeout_seconds: 30
+  health_retries: 3
+  auto_heal: true
+  endpoints: []

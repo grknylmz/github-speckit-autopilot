@@ -2,8 +2,8 @@
 description: 'Verify the built application by starting it, checking logs, hitting endpoints, and diagnosing issues. Self-heals by generating fix tasks and looping back to implement.'
 mode: speckit.autopilot.verify
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 # Autopilot Verify

@@ -2,19 +2,20 @@
 
 tests/
 .git/
+.claude/
 
 # Build artifacts
 
-**pycache**/
-_.pyc
+__pycache__/
+*.pyc
 dist/
-_.egg-info/
+*.egg-info/
 
 # IDE
 
 .vscode/
 .idea/
-\*.swp
+*.swp
 
 # OS
 
