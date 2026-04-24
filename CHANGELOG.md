@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Extension packaging now includes the `.github/` Copilot instruction and prompt files so installs materialize the expected Copilot entrypoints
 - Added `scripts/sync-copilot-files.sh` and updated docs to reflect that `specify extension add` installs the extension under `.specify/extensions/autopilot/`, requiring an explicit sync into the project root `.github/` for Copilot prompt discovery
+- Extension command frontmatter now uses Spec Kit's expected relative script paths, so installed commands resolve prerequisite scripts from `.specify/scripts/`
+- `autopilot-config.yml` is now installed with the extension instead of only being described by `config-template.yml`
+- Copilot bootstrap now removes only CLI-generated `.github/agents/speckit.autopilot.*.md` command shims so the intended `*.agent.md` custom agents remain cleanly discoverable
 
 ### Added
 

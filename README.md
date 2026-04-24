@@ -82,6 +82,13 @@ specify extension list
 #     Commands: 6 | Hooks: 0 | Status: Enabled
 ```
 
+The install creates the managed extension directory at:
+
+- `.specify/extensions/autopilot/`
+- `.specify/extensions/autopilot/autopilot-config.yml`
+
+It also registers autopilot command files for detected agents. For Claude Code projects, those files are written under `.claude/commands/`.
+
 ### Confirm Commands Are Registered
 
 ```bash
@@ -96,9 +103,11 @@ ls .claude/commands/speckit.autopilot.*
 # speckit.autopilot.bootstrap-copilot.md
 ```
 
+If you use another supported agent, check that agent's command directory instead. For example, Spec Kit currently registers Copilot command shims under `.github/agents/speckit.autopilot.*.md`, but the richer Copilot custom agents and prompts still require the bootstrap step below.
+
 ### Bootstrap GitHub Copilot Files
 
-If you use GitHub Copilot in VS Code, there is one more step. The extension installation places the managed Copilot assets under `.specify/extensions/autopilot/`, but VS Code discovers project instructions, prompts, and agents from the project root `.github/` directory.
+If you use GitHub Copilot in VS Code, there is one more step. The extension installation places the managed Copilot assets under `.specify/extensions/autopilot/.github/`, but VS Code discovers project instructions, prompts, and custom agents from the project root `.github/` directory.
 
 Run one of these:
 
@@ -118,7 +127,7 @@ This copies only the autopilot-managed files into:
 - `.github/prompts/`
 - `.github/agents/`
 
-It does not modify unrelated `.github/` files.
+It does not modify unrelated `.github/` files. It does remove only the CLI-generated `.github/agents/speckit.autopilot.*.md` command shims, because the managed Copilot custom agents are the `*.agent.md` files copied by this bootstrap step.
 
 ### Confirm Copilot Files Are Installed
 
@@ -257,7 +266,7 @@ If you prefer prompt files instead of switching agents, use the matching prompt 
 
 ## Configuration
 
-Located at `.specify/extensions/autopilot/autopilot-config.yml`.
+Located at `.specify/extensions/autopilot/autopilot-config.yml`. This file is installed automatically with the extension and can be edited in the target project after installation.
 
 ### Phase Configuration
 
@@ -450,7 +459,9 @@ MIT
 
 ## GitHub Copilot Support
 
-This repository includes built-in support for GitHub Copilot. If you clone the repository directly, the files are already present. If you install via `specify extension add`, run `/speckit.autopilot.bootstrap-copilot` in a supported agent or use the sync script to copy the Copilot files from `.specify/extensions/autopilot/.github/` into the project root `.github/`.
+This repository includes built-in support for GitHub Copilot. If you clone the repository directly, the files are already present. If you install via `specify extension add`, the extension is installed under `.specify/extensions/autopilot/` and the managed Copilot assets are kept there until you bootstrap them into the project root `.github/`.
+
+Run `/speckit.autopilot.bootstrap-copilot` in a supported agent or use `./.specify/extensions/autopilot/scripts/sync-copilot-files.sh` to copy those assets into the location VS Code discovers.
 
 ### How It Works
 
@@ -471,7 +482,7 @@ This repository includes built-in support for GitHub Copilot. If you clone the r
 3. Add `"chat.promptFiles": true`
 4. The `.github/prompts/` folder becomes available in Copilot Chat
 
-**For custom agents** (VS Code Copilot agent mode): After bootstrap or sync, the `.github/agents/` folder contains autopilot-specific custom agents that can be selected from the agent picker.
+**For custom agents** (VS Code Copilot agent mode): After bootstrap or sync, the `.github/agents/` folder contains the autopilot-specific `*.agent.md` custom agents that can be selected from the agent picker.
 
 ### Usage
 
